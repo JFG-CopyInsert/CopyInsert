@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CopyInsert: structure of the Edit menu entries and their English titles (default).
+     Every node uses oor:op="fuse" so that the titles of the other languages, kept in
+     Addons_xx.xcu (one file per language, listed in META-INF/manifest.xml), are merged
+     into these entries. Do not change fuse to replace: a replace would erase them. -->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" oor:name="Addons" oor:package="org.openoffice.Office">
+<node oor:name="AddonUI">
+<node oor:name="OfficeMenuBarMerging">
+<node oor:name="org.libreoffice.extension.copyinsert" oor:op="fuse">
+<node oor:name="S1" oor:op="fuse">
+<prop oor:name="MergePoint" oor:type="xs:string"><value>.uno:EditMenu\.uno:PasteSpecialMenu</value></prop>
+<prop oor:name="MergeCommand" oor:type="xs:string"><value>AddAfter</value></prop>
+<prop oor:name="MergeFallback" oor:type="xs:string"><value>Ignore</value></prop>
+<prop oor:name="MergeContext" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+<node oor:name="MenuItems">
+<node oor:name="M00" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="M01" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Copy</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Copy and insert</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+<node oor:name="Submenu">
+<node oor:name="S1" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Copy.Above</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Above</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S2" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Copy.Below</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Below</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S3" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Copy.Left</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~left</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S4" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Copy.Right</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~right</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+</node>
+</node>
+<node oor:name="M02" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Paste</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Copy and paste special</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+<node oor:name="Submenu">
+<node oor:name="S1" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Paste.Above</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Above</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S2" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Paste.Below</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Below</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S3" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Paste.Left</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~left</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S4" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Paste.Right</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~right</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+</node>
+</node>
+<node oor:name="M03" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Cut</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Cut and insert</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+<node oor:name="Submenu">
+<node oor:name="S1" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Cut.Above</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Above</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S2" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Cut.Below</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Below</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S3" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Cut.Left</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~left</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S4" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Cut.Right</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~right</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+</node>
+</node>
+<node oor:name="M04" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Move</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">Move and insert</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+<node oor:name="Submenu">
+<node oor:name="S1" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Move.Above</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Above</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S2" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Move.Below</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">~Below</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S3" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Move.Left</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~left</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+<node oor:name="S4" oor:op="fuse">
+<prop oor:name="URL" oor:type="xs:string"><value>org.libreoffice.extension.copyinsert:Move.Right</value></prop>
+<prop oor:name="Title" oor:type="xs:string"><value xml:lang="en-US">To the ~right</value></prop>
+<prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+<prop oor:name="Context" oor:type="xs:string"><value>com.sun.star.sheet.SpreadsheetDocument</value></prop>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</oor:component-data>

@@ -1,0 +1,12 @@
+Ajoute à Calc les fonctions copier, couper et déplacer avec insertion.
+
+Sélectionnez des lignes, des colonnes ou des cellules,
+faites un clic droit (ou ouvrez le menu Édition),
+choisissez l'action puis cliquez sur la destination.
+
+Plusieurs lignes (ou colonnes) sélectionnées avec Ctrl sont insérées ensemble, dans l'ordre de la feuille.
+
+Les lignes vont au-dessus ou en dessous, les colonnes à gauche ou à droite,
+les cellules dans les quatre directions.
+Couper et déplacer conservent les formules, Annuler resélectionne la source,
+et les menus suivent la langue de l'interface (français ou anglais pour le moment).

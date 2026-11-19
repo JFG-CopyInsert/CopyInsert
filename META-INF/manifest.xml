@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE manifest:manifest PUBLIC "-//OpenOffice.org//DTD Manifest 1.0//EN" "Manifest.dtd">
+<manifest:manifest xmlns:manifest="http://openoffice.org/2001/manifest">
+  <manifest:file-entry manifest:full-path="CopyInsertLib/" manifest:media-type="application/vnd.sun.star.basic-library"/>
+  <manifest:file-entry manifest:full-path="python/CopyInsertJob.py" manifest:media-type="application/vnd.sun.star.uno-component;type=Python"/>
+  <manifest:file-entry manifest:full-path="python/CopyInsertEditMenu.py" manifest:media-type="application/vnd.sun.star.uno-component;type=Python"/>
+  <manifest:file-entry manifest:full-path="registry/Addons.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry manifest:full-path="registry/Addons_fr.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry manifest:full-path="registry/ProtocolHandler.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry manifest:full-path="registry/Jobs.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry manifest:full-path="registry/Accelerators.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+  <manifest:file-entry manifest:full-path="description/description_en.txt" manifest:media-type="application/vnd.sun.star.package-bundle-description;locale=en"/>
+  <manifest:file-entry manifest:full-path="description/description_fr.txt" manifest:media-type="application/vnd.sun.star.package-bundle-description;locale=fr"/>
+</manifest:manifest>

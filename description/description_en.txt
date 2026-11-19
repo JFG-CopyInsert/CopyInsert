@@ -1,0 +1,10 @@
+Adds copy, cut and move with insertion to Calc.
+
+Select rows, columns or cells, right-click (or open the Edit menu),
+choose an action and click the destination.
+
+Several rows (or columns) selected with Ctrl are inserted together, in sheet order.
+
+Rows go above/below, columns left/right, cells in all four directions.
+Cut and move keep formulas intact, Undo reselects the source,
+and the menus follow the interface language (English or French for now).

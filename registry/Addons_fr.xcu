@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CopyInsert: titles of the Edit menu entries, French. One such file per language
+     (Addons_xx.xcu, listed in META-INF/manifest.xml); only xml:lang changes. -->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" oor:name="Addons" oor:package="org.openoffice.Office">
+<node oor:name="AddonUI">
+<node oor:name="OfficeMenuBarMerging">
+<node oor:name="org.libreoffice.extension.copyinsert" oor:op="fuse">
+<node oor:name="S1" oor:op="fuse">
+<node oor:name="MenuItems" oor:op="fuse">
+<node oor:name="M01" oor:op="fuse">
+<prop oor:name="Title" oor:type="xs:string" oor:op="fuse"><value xml:lang="fr">Copier et insérer</value></prop>
+</node>
+<node oor:name="M02" oor:op="fuse">
+<prop oor:name="Title" oor:type="xs:string" oor:op="fuse"><value xml:lang="fr">Copier et collage spécial</value></prop>
+</node>
+<node oor:name="M03" oor:op="fuse">
+<prop oor:name="Title" oor:type="xs:string" oor:op="fuse"><value xml:lang="fr">Couper et insérer</value></prop>
+</node>
+<node oor:name="M04" oor:op="fuse">
+<prop oor:name="Title" oor:type="xs:string" oor:op="fuse"><value xml:lang="fr">Déplacer et insérer</value></prop>
+</node>
+</node>
+</node>
+</node>
+</node>
+</node>
+</oor:component-data>

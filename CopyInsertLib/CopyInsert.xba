@@ -1,0 +1,1653 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="CopyInsert" script:language="StarBasic" script:moduleType="normal">&apos; =====================================================================
+&apos;  CopyInsert - copy / cut / move and insert for Calc
+&apos;  Environment: LibreOffice 26.8.1.1. Library CopyInsertLib, module CopyInsert
+&apos;  (My Macros).
+&apos; =====================================================================
+&apos;
+&apos;  WHAT IT DOES
+&apos;  Adds copy/insert, cut/insert and move/insert for rows, columns and cells in
+&apos;  Calc spreadsheets. They are available after selecting the source data
+&apos;  (row(s), column(s) or cell(s)) and clicking the mouse right button.
+&apos;  Move works like cut, but the source rows / columns / cells are kept and
+&apos;  only their content is cleared.
+&apos;
+&apos;  SEVERAL ROWS OR COLUMNS (Ctrl SELECTION)
+&apos;  Rows (or columns) selected with the Ctrl key, even if they are not next to each
+&apos;  other, are used as one source: they are inserted one after the other, in sheet order,
+&apos;  as one block of consecutive rows (columns). Example: rows 2 and 10 are selected and
+&apos;  &quot;copy above&quot; is chosen on row 7: row 2 is copied to the new row 7, row 10 to the new
+&apos;  row 8, and the old row 7 becomes row 9. The same for columns, and for copy, paste
+&apos;  special, cut and move. Cells still take one range only.
+&apos;
+&apos;  OPTIONS
+&apos;  1) Right-click menus for cells, rows and columns, each with copy, paste
+&apos;     special, cut and move submenus. The Edit menu has the same four
+&apos;     submenus, which follow the selection (see HOW IT WORKS).
+&apos;  2) Above / below for rows, to the left / to the right for columns, and all
+&apos;     four directions for cells.
+&apos;  3) Submenu keyboard letters (English): A (above), B (below), L (left), R (right).
+&apos;     In French: A (au-dessus), E (en dessous), G (gauche), D (droite).
+&apos;  4) Cut and move keep formulas intact in the target area.
+&apos;  5) One Undo step per plain copy, cut or move. Paste special takes two
+&apos;     (the insertion, then the paste). After each Undo the source is selected.
+&apos;  6) Works for Calc spreadsheets only.
+&apos;  7) Automatic setup: the extension runs EnableMenu from a job triggered by the
+&apos;     &quot;View Created&quot; event (nothing appears in Tools &gt; Customize &gt; Events) and
+&apos;     registers the keyboard shortcuts below, so nothing has to be assigned
+&apos;     by hand. Without the extension: Tools &gt; Customize &gt; Events, with &quot;Save In&quot;
+&apos;     set to LibreOffice (not the current spreadsheet), assign
+&apos;     CopyInsertLib &gt; CopyInsert &gt; EnableMenu to the event &quot;View Created&quot;.
+&apos;  8) Keyboard shortcuts. The extension registers these for Calc. All of them insert
+&apos;     before the destination (above for rows and cells, to the left for columns):
+&apos;       Alt+C  StartCopyBefore          Alt+X  StartCutBefore
+&apos;       Alt+M  StartMoveBefore          Alt+P  StartPasteSpecialBefore
+&apos;     Others can be assigned in Tools &gt; Customize &gt; Keyboard, then Application
+&apos;     Macros &gt; My Macros &gt; CopyInsertLib &gt; CopyInsert:
+&apos;       StartCopy          copy and insert after (below / to the right)
+&apos;       StartPasteSpecial  copy, paste special and insert after
+&apos;       StartCut           cut and insert after
+&apos;       StartMove          move and insert after
+&apos;     The &quot;before&quot; versions (above / to the left) are StartCopyBefore,
+&apos;     StartPasteSpecialBefore, StartCutBefore and StartMoveBefore. For cells,
+&apos;     the direction-specific ones are StartCopyAbove / Below / Left / Right
+&apos;     (same pattern for PasteSpecial, Cut and Move).
+&apos;  9) Languages: English and French. The texts are in the files
+&apos;     l10n/CopyInsert_xx.properties of the extension (CopyInsert_en_US is the
+&apos;     default, CopyInsert_fr is French). The language follows the LibreOffice user
+&apos;     interface language (Tools &gt; Options &gt; Language Settings &gt; Languages).
+&apos;     A language without a file, or a key missing from a file, uses the English text.
+&apos;     Run the macro ShowLanguage to see what was detected.
+&apos; 10) Install the extension with Tools &gt; Extension Manager &gt; Add. Double-clicking
+&apos;     the .oxt file can make LibreOffice ask to install it again after every restart.
+&apos;
+&apos;  ADDING A LANGUAGE (for example German, code &quot;de&quot;). This module does not change.
+&apos;     Three files per language, plus their entries in the two index files:
+&apos;     1) l10n/CopyInsert_de.properties: copy CopyInsert_en_US.properties and translate
+&apos;        the values. Keep the keys and the &quot;~&quot; keyboard-letter marks (the letter after
+&apos;        the &quot;~&quot; is the shortcut; the letters must be different inside a submenu).
+&apos;        Write accents as \uXXXX: the files are read as ASCII. A country file such as
+&apos;        CopyInsert_fr_CA is used before CopyInsert_fr for that country.
+&apos;     2) registry/Addons_de.xcu: copy Addons_fr.xcu and translate the four menu titles
+&apos;        of the Edit menu. Add the file to META-INF/manifest.xml.
+&apos;     3) description/description_de.txt: the text shown in the Extension Manager. Add it
+&apos;        to META-INF/manifest.xml and to description.xml (a &lt;src&gt; line and a &lt;name&gt; line).
+&apos;     4) Optional: license/license_de.txt, with a &lt;license-text&gt; line in description.xml.
+&apos;        Without it the English license is shown.
+&apos;     See l10n/README.txt.
+&apos;
+&apos;  GOOD TO KNOW
+&apos;  1) The clipboard is overwritten with the copied range, as with a normal copy.
+&apos;  2) Options that change the size of the pasted data do not fit. Transpose
+&apos;     would paste a different shape than the space that was made.
+&apos;  3) After a paste special, the selection is whatever the dialog leaves, not
+&apos;     the automatic selection of the pasted data done by copy, cut and move.
+&apos;  4) Cut and move relocate the cells with their formulas, so there is no
+&apos;     paste special variant for them.
+&apos;  5) Destination inside the source: not blocked for paste special (the data is
+&apos;     copied before anything is inserted). Plain copy, cut and move refuse it.
+&apos;  6) Right-clicking a whole-sheet selection adds nothing, since a whole sheet
+&apos;     cannot be used as a source.
+&apos;  7) Copying a cell whose relative address is part of the source and ends up
+&apos;     pointing before row 1 or column 1 gives #REF!. This is normal Calc behavior.
+&apos;  8) Cancelling the paste special dialog leaves the empty rows / columns / cells
+&apos;     in place. Press Ctrl+Z once to remove them.
+&apos;  9) Two Undo steps for paste special: the insertion and the paste are separate.
+&apos; 10) A multiple (Ctrl) selection must be made of complete rows only, or of complete
+&apos;     columns only, on one sheet. With anything else (cells, rows mixed with columns)
+&apos;     the menus are not offered. Ranges that touch or overlap are merged, and the
+&apos;     source is always used in sheet order, not in the order it was selected.
+&apos; 11) Several source ranges are one Undo step as well (two for paste special). After an
+&apos;     Undo, all the source ranges are selected again.
+&apos; 12) Cut with several ranges: every emptied source row (column) is removed once all the
+&apos;     data has been moved, so the pasted block ends up higher (further left) by the size
+&apos;     of the removed ranges that were above (to the left of) the destination.
+&apos; 13) Paste special with several ranges relies on Calc itself, which pastes the ranges of
+&apos;     a multiple selection of complete rows (columns) one after the other.
+&apos;
+&apos;  HOW IT WORKS
+&apos;   - A context menu interceptor adds the entries (CMI_ functions).
+&apos;   - The Edit menu entries come from registry/Addons.xcu (merged after Paste
+&apos;     Special, Calc only). A Python protocol handler (python/CopyInsertEditMenu.py)
+&apos;     answers LibreOffice&apos;s status request each time Edit opens: it enables only
+&apos;     the directions that fit the selection (rows: above / below, columns: left /
+&apos;     right, cells: all four) and adds the word rows / columns / cells (keys
+&apos;     k.rows, k.columns, k.cells). The four submenu titles are fixed text:
+&apos;     LibreOffice never asks for their status. A click runs the matching
+&apos;     Start... macro below.
+&apos;   - ArmPendingEx saves the source in a temporary DOCUMENT PROPERTY
+&apos;     (CopyInsertState = mode|cut 0/1/2|before|special|right|sheet|ranges|timestamp,
+&apos;     where &quot;cut&quot; is 0 = copy, 1 = cut, 2 = move, and ranges is a list such as
+&apos;     c1,r1,c2,r2;c1,r1,c2,r2 : one entry per source range) and opens startRangeSelection.
+&apos;     RS_done reads the click and runs the operation.
+&apos;   - PerformInsert: insert room for all the source ranges together, then copyRange (copy)
+&apos;     or moveRange (cut / move) for each range in turn. Cut deletes the emptied source,
+&apos;     move keeps it (bRemove flag).
+&apos;   - A selection is read by ReadSelection: a single range, or the ranges of a Ctrl
+&apos;     selection (a SheetCellRanges object, which has no RangeAddress property).
+&apos;     Sets of ranges are Long arrays aR(field, index), fields 0..3 = c1, r1, c2, r2.
+&apos;   - PerformPasteSpecial: copy to the clipboard, insert room, open Paste Special.
+&apos;   - The Undo listener (UM_) reselects the source after an Undo, using the
+&apos;     properties CopyInsertUndo and CopyInsertPSSrc and the Undo title prefix
+&apos;     (translated, see UndoPrefix).
+&apos;   - All texts come from Txt(&quot;key&quot;): the properties file of the active language,
+&apos;     then the English one (InitRes, PickLocale, ResolveIn).
+&apos;
+&apos;  THINGS LEARNED THE HARD WAY
+&apos;   - XSelectionChangeListener never fired. Module-level variables are reset
+&apos;     between events, so the state lives in the document property.
+&apos;   - Menu item properties must be set with setPropertyValue (Text, SubContainer).
+&apos;   - Duplicate interceptors pile up when the module is edited. The guard checks
+&apos;     the labels of every language (IsOurLabel). After any edit, close and
+&apos;     reopen the document.
+&apos;   - Do not name a variable sTop (it collides with Stop). Basic is case-insensitive.
+&apos;   - The destination is passed as plain numbers, not as an address object.
+&apos;   - The &quot;: area&quot; text in the destination window comes from LibreOffice and
+&apos;     cannot be changed. Starting the window with an empty range (InitialValue)
+&apos;     was tried and reverted. The highlight of the source area on other sheets
+&apos;     is also LibreOffice&apos;s own behavior.
+&apos;   - Paste special is two Undo steps. The second one is recognized by checking
+&apos;     the top of the Undo stack.
+&apos;   - The string resource service reads the .properties files as ASCII (write accents
+&apos;     as \uXXXX). It does not fall back by itself: a missing key raises an error, and
+&apos;     a language without a file gets some other file. InitRes therefore picks the file
+&apos;     (PickLocale) and Txt falls back to English key by key.
+&apos;   - Paste special: .uno:PasteSpecial is ignored if LibreOffice has not yet processed the
+&apos;     clipboard change caused by .uno:Copy (seen on the first use in a session). The
+&apos;     dispatch normally blocks while the dialog is open, so a call that returns at once
+&apos;     is retried after letting the event loop run (OpenPasteSpecial).
+&apos;   - A keyboard shortcut label appears next to a menu entry only if the entry runs the
+&apos;     very macro the shortcut is bound to (the ...Before macros): see AddCellSubmenu.
+&apos;   - License fallback in description.xml: default-license-id must name a license-text
+&apos;     that has that license-id, or installing with an unlisted UI language fails with
+&apos;     &quot;Could not obtain path to license&quot;.
+&apos;   - In an error handler, read Error$ and Erl FIRST: calling a function that has
+&apos;     its own error handling (like Txt) can reset them.
+&apos; =====================================================================
+
+Option Explicit
+
+&apos; ---------- Settings ----------
+Const MACRO_BASE = &quot;vnd.sun.star.script:CopyInsertLib.CopyInsert.&quot;
+Const MACRO_TAIL = &quot;?language=Basic&amp;location=application&quot;
+&apos; True: menus use submenus / False: flat lists of entries
+Const USE_SUBMENUS = True
+&apos; Default direction for cells when StartCopy / StartCut / StartMove / StartPasteSpecial are used
+&apos; (for example from a keyboard shortcut): True = shift down, False = shift right
+Const CELLS_SHIFT_DOWN = True
+Const STATE_NAME = &quot;CopyInsertState&quot;
+&apos; Used to reselect the source after an Undo
+Const UNDO_NAME = &quot;CopyInsertUndo&quot;           &apos; source for the undo of the insertion
+Const PSSRC_NAME = &quot;CopyInsertPSSrc&quot;         &apos; paste special: source as it sits after the insertion
+
+&apos; ---------- Translations ----------
+&apos; The texts are in the files l10n/CopyInsert_xx.properties of the extension
+&apos; (CopyInsert_en_US.properties is the default). Leave L10N_DIR empty to use the l10n
+&apos; folder of the installed extension. To work on this module in My Macros without the
+&apos; extension, put the URL of a folder holding the files here, for example
+&apos; &quot;file:///home/me/CopyInsert/l10n/&quot;.
+Const L10N_DIR = &quot;&quot;
+Const L10N_BASE = &quot;CopyInsert&quot;
+Const EXT_ID = &quot;org.libreoffice.extension.copyinsert&quot;
+
+&apos; ---------- State used only while PerformInsert runs ----------
+Private oInterceptor As Object
+Private oUndoListener As Object
+Private oSelListener As Object
+Private oSrcDoc As Object
+Private oSrcAddr As Variant      &apos; first source range (the only one for cells)
+Private aSrcRanges As Variant    &apos; all source ranges: aR(field, index), see ReadSelection
+Private sSrcMode As String
+Private bCutMode As Boolean
+Private bMoveMode As Boolean
+Private bBeforeMode As Boolean
+Private bSpecialMode As Boolean
+Private bShiftRight As Boolean
+Private oResCur As Object       &apos; texts of the user interface language
+Private oResEn As Object        &apos; English texts (for a missing language or key)
+Private bCurOK As Boolean       &apos; oResCur holds usable texts
+Private bEnOK As Boolean        &apos; oResEn holds usable texts
+Private bResInit As Boolean
+
+
+Function IsCalcDoc(oDoc As Object) As Boolean
+    IsCalcDoc = False
+    If IsNull(oDoc) Or IsEmpty(oDoc) Then Exit Function
+    IsCalcDoc = oDoc.supportsService(&quot;com.sun.star.sheet.SpreadsheetDocument&quot;)
+End Function
+
+
+&apos;=====================================================================
+&apos;  0a. Source ranges: one range, or several (Ctrl selection)
+&apos;      A set of ranges is a Long array aR(field, index) with the fields
+&apos;      0 = first column, 1 = first row, 2 = last column, 3 = last row.
+&apos;=====================================================================
+&apos; Reads a selection as a set of ranges. nSheet receives the sheet index.
+&apos; Returns Empty if the selection is not made of cell ranges, or spreads over several sheets.
+Function ReadSelection(oSel As Variant, nSheet As Long) As Variant
+    Dim aAddr As Variant, aOut() As Long, i As Long, n As Long, oA As Object
+
+    ReadSelection = Empty
+    On Error GoTo SelFail
+    If IsNull(oSel) Or IsEmpty(oSel) Then Exit Function
+    If HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XCellRangeAddressable&quot;) Then
+        oA = oSel.RangeAddress
+        nSheet = oA.Sheet
+        ReDim aOut(3, 0)
+        aOut(0, 0) = oA.StartColumn : aOut(1, 0) = oA.StartRow
+        aOut(2, 0) = oA.EndColumn   : aOut(3, 0) = oA.EndRow
+    ElseIf HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XSheetCellRanges&quot;) Then
+        aAddr = oSel.getRangeAddresses()
+        n = UBound(aAddr) + 1
+        If n &lt; 1 Then Exit Function
+        nSheet = aAddr(0).Sheet
+        ReDim aOut(3, n - 1)
+        For i = 0 To n - 1
+            If aAddr(i).Sheet &lt;&gt; nSheet Then Exit Function
+            aOut(0, i) = aAddr(i).StartColumn : aOut(1, i) = aAddr(i).StartRow
+            aOut(2, i) = aAddr(i).EndColumn   : aOut(3, i) = aAddr(i).EndRow
+        Next i
+    Else
+        Exit Function
+    End If
+    ReadSelection = aOut
+    Exit Function
+
+SelFail:
+    ReadSelection = Empty
+End Function
+
+&apos; &quot;WHOLE&quot; (a whole sheet is part of it), &quot;ROWS&quot; (all complete rows), &quot;COLS&quot; (all complete
+&apos; columns), &quot;CELLS&quot; (one range of cells) or &quot;MIXED&quot; (anything else: not supported)
+Function KindOfRanges(oDoc As Object, nSheet As Long, aR As Variant) As String
+    Dim oSheet As Object, nCols As Long, nRows As Long, i As Long, n As Long
+    Dim bAllRows As Boolean, bAllCols As Boolean, bFullR As Boolean, bFullC As Boolean
+
+    oSheet = oDoc.Sheets.getByIndex(nSheet)
+    nCols = oSheet.Columns.Count
+    nRows = oSheet.Rows.Count
+    n = UBound(aR, 2) + 1
+    bAllRows = True
+    bAllCols = True
+    For i = 0 To n - 1
+        bFullR = (aR(0, i) = 0 And aR(2, i) = nCols - 1)
+        bFullC = (aR(1, i) = 0 And aR(3, i) = nRows - 1)
+        If bFullR And bFullC Then
+            KindOfRanges = &quot;WHOLE&quot;
+            Exit Function
+        End If
+        If Not bFullR Then bAllRows = False
+        If Not bFullC Then bAllCols = False
+    Next i
+    If bAllRows Then
+        KindOfRanges = &quot;ROWS&quot;
+    ElseIf bAllCols Then
+        KindOfRanges = &quot;COLS&quot;
+    ElseIf n = 1 Then
+        KindOfRanges = &quot;CELLS&quot;
+    Else
+        KindOfRanges = &quot;MIXED&quot;
+    End If
+End Function
+
+&apos; Sorts complete rows (nS = 1) or complete columns (nS = 0) in sheet order and merges the
+&apos; ones that touch or overlap
+Function NormalizeRanges(aR As Variant, nS As Long) As Variant
+    Dim nE As Long, n As Long, i As Long, j As Long, k As Long, m As Long, t As Long
+    Dim aOut() As Long, bJoin As Boolean
+
+    nE = nS + 2
+    n = UBound(aR, 2) + 1
+    For i = 1 To n - 1                     &apos; insertion sort on the first row (column)
+        j = i
+        Do While j &gt; 0
+            If aR(nS, j - 1) &lt;= aR(nS, j) Then Exit Do
+            For k = 0 To 3
+                t = aR(k, j - 1) : aR(k, j - 1) = aR(k, j) : aR(k, j) = t
+            Next k
+            j = j - 1
+        Loop
+    Next i
+
+    ReDim aOut(3, n - 1)
+    m = 0
+    For i = 0 To n - 1
+        bJoin = False                       &apos; (And does not short-circuit in Basic)
+        If m &gt; 0 Then
+            If aR(nS, i) &lt;= aOut(nE, m - 1) + 1 Then bJoin = True
+        End If
+        If bJoin Then
+            If aR(nE, i) &gt; aOut(nE, m - 1) Then aOut(nE, m - 1) = aR(nE, i)
+        Else
+            For k = 0 To 3
+                aOut(k, m) = aR(k, i)
+            Next k
+            m = m + 1
+        End If
+    Next i
+    ReDim Preserve aOut(3, m - 1)
+    NormalizeRanges = aOut
+End Function
+
+&apos; Total number of rows (nS = 1) or columns (nS = 0) of a set of ranges
+Function TotalSize(aR As Variant, nS As Long) As Long
+    Dim i As Long, n As Long
+    n = 0
+    For i = 0 To UBound(aR, 2)
+        n = n + aR(nS + 2, i) - aR(nS, i) + 1
+    Next i
+    TotalSize = n
+End Function
+
+Function CopyRanges(aR As Variant) As Variant
+    Dim aOut() As Long, i As Long, k As Long
+    ReDim aOut(3, UBound(aR, 2))
+    For i = 0 To UBound(aR, 2)
+        For k = 0 To 3
+            aOut(k, i) = aR(k, i)
+        Next k
+    Next i
+    CopyRanges = aOut
+End Function
+
+&apos; &quot;c1,r1,c2,r2;c1,r1,c2,r2&quot; (no &quot;|&quot;: it goes inside the saved states)
+Function RangesToString(aR As Variant) As String
+    Dim s As String, i As Long
+    s = &quot;&quot;
+    For i = 0 To UBound(aR, 2)
+        If i &gt; 0 Then s = s &amp; &quot;;&quot;
+        s = s &amp; aR(0, i) &amp; &quot;,&quot; &amp; aR(1, i) &amp; &quot;,&quot; &amp; aR(2, i) &amp; &quot;,&quot; &amp; aR(3, i)
+    Next i
+    RangesToString = s
+End Function
+
+Function StringToRanges(s As String) As Variant
+    Dim p() As String, q() As String, aOut() As Long, i As Long, k As Long
+    p = Split(s, &quot;;&quot;)
+    ReDim aOut(3, UBound(p))
+    For i = 0 To UBound(p)
+        q = Split(p(i), &quot;,&quot;)
+        For k = 0 To 3
+            aOut(k, i) = CLng(q(k))
+        Next k
+    Next i
+    StringToRanges = aOut
+End Function
+
+&apos; What to select to show or copy a set of ranges: a range, or the ranges of a Ctrl selection
+Function BuildSelection(oDoc As Object, nSheet As Long, aR As Variant) As Object
+    Dim oSheet As Object, oRanges As Object, i As Long
+    Dim oA As New com.sun.star.table.CellRangeAddress
+
+    oSheet = oDoc.Sheets.getByIndex(nSheet)
+    If UBound(aR, 2) = 0 Then
+        BuildSelection = oSheet.getCellRangeByPosition(aR(0, 0), aR(1, 0), aR(2, 0), aR(3, 0))
+        Exit Function
+    End If
+    oRanges = oDoc.createInstance(&quot;com.sun.star.sheet.SheetCellRanges&quot;)
+    oA.Sheet = nSheet
+    For i = 0 To UBound(aR, 2)
+        oA.StartColumn = aR(0, i) : oA.StartRow = aR(1, i)
+        oA.EndColumn = aR(2, i)   : oA.EndRow = aR(3, i)
+        oRanges.addRangeAddress(oA, False)
+    Next i
+    BuildSelection = oRanges
+End Function
+
+
+&apos;=====================================================================
+&apos;  0. Languages: detection and texts
+&apos;=====================================================================
+&apos; Reads the LibreOffice user interface locale (for example &quot;fr-FR&quot;).
+&apos; Returns &quot;&quot; if it cannot be read.
+Function ReadUILocale() As String
+    Dim oProv As Object, oNode As Object, sLoc As String
+    Dim aArgs(0) As New com.sun.star.beans.PropertyValue
+
+    ReadUILocale = &quot;&quot;
+    On Error GoTo LangFail
+    oProv = createUnoService(&quot;com.sun.star.configuration.ConfigurationProvider&quot;)
+    aArgs(0).Name = &quot;nodepath&quot;
+    aArgs(0).Value = &quot;/org.openoffice.Setup/L10N&quot;
+    oNode = oProv.createInstanceWithArguments(&quot;com.sun.star.configuration.ConfigurationAccess&quot;, aArgs())
+    sLoc = oNode.getByName(&quot;ooLocale&quot;)
+    If Len(sLoc) = 0 Then sLoc = oNode.getByName(&quot;ooSetupSystemLocale&quot;)
+    ReadUILocale = sLoc
+    Exit Function
+
+LangFail:
+    ReadUILocale = &quot;&quot;
+End Function
+
+&apos; Splits a locale such as &quot;fr-FR&quot; or &quot;zh-Hans-CN&quot; into a Locale structure
+Function ToLocale(sLoc As String) As Variant
+    Dim aLoc As New com.sun.star.lang.Locale
+    Dim a() As String
+    a = Split(Replace(sLoc, &quot;_&quot;, &quot;-&quot;), &quot;-&quot;)
+    If UBound(a) &gt;= 0 Then aLoc.Language = LCase(a(0))
+    If UBound(a) &gt;= 1 Then
+        If Len(a(UBound(a))) = 2 Then aLoc.Country = UCase(a(UBound(a)))
+    End If
+    ToLocale = aLoc
+End Function
+
+&apos; URL (with a closing slash) of the folder holding the translation files,
+&apos; or &quot;&quot; if it cannot be found
+Function L10nFolder() As String
+    Dim sUrl As String, oPip As Object
+    L10nFolder = &quot;&quot;
+    sUrl = L10N_DIR
+    If sUrl = &quot;&quot; Then
+        On Error GoTo NoFolder
+        oPip = GetDefaultContext().getValueByName( _
+            &quot;/singletons/com.sun.star.deployment.PackageInformationProvider&quot;)
+        sUrl = oPip.getPackageLocation(EXT_ID)
+        If sUrl &lt;&gt; &quot;&quot; Then sUrl = sUrl &amp; &quot;/l10n&quot;
+    End If
+    If sUrl &lt;&gt; &quot;&quot; And Right(sUrl, 1) &lt;&gt; &quot;/&quot; Then sUrl = sUrl &amp; &quot;/&quot;
+    L10nFolder = sUrl
+    Exit Function
+
+NoFolder:
+    L10nFolder = &quot;&quot;
+End Function
+
+&apos; Opens the translation files of the folder (Empty if that fails)
+Function OpenRes(sFolder As String, aLoc As Variant) As Variant
+    Dim oHandler As Object, aArgs As Variant
+    On Error GoTo OpenFail
+    oHandler = createUnoService(&quot;com.sun.star.task.InteractionHandler&quot;)
+    aArgs = Array(sFolder, True, aLoc, L10N_BASE, &quot;&quot;, oHandler)
+    OpenRes = GetProcessServiceManager().createInstanceWithArgumentsAndContext( _
+        &quot;com.sun.star.resource.StringResourceWithLocation&quot;, aArgs, GetDefaultContext())
+    Exit Function
+
+OpenFail:
+    OpenRes = Empty
+End Function
+
+&apos; Selects, among the files found, the best one for the wanted locale: same language and
+&apos; country, then the language alone (CopyInsert_fr), then the same language with another
+&apos; country. If nothing fits, the current locale is left as it is.
+Sub PickLocale(oRes As Object, aWant As Variant)
+    Dim aList As Variant, i As Long, nBest As Long, nTop As Long, nScore As Long
+    aList = oRes.getLocales()
+    nBest = -1
+    nTop = 0
+    For i = 0 To UBound(aList)
+        nScore = 0
+        If aList(i).Language = aWant.Language Then
+            nScore = 1
+            If aList(i).Country = &quot;&quot; Then nScore = 2
+            If aWant.Country &lt;&gt; &quot;&quot; And aList(i).Country = aWant.Country Then nScore = 3
+        End If
+        If nScore &gt; nTop Then
+            nTop = nScore
+            nBest = i
+        End If
+    Next i
+    If nBest &gt;= 0 Then oRes.setCurrentLocale(aList(nBest), False)
+End Sub
+
+&apos; Opens the English texts and, if the user interface language has a file, its texts.
+&apos; LibreOffice does not fall back by itself (a missing key is an error, and an unknown
+&apos; language gets some other file), so the choice is made here.
+Sub InitRes()
+    Dim sFolder As String, aWant As Variant, aCur As Variant, vRes As Variant
+    If bResInit Then Exit Sub
+    bResInit = True
+    bEnOK = False
+    bCurOK = False
+    sFolder = L10nFolder()
+    If sFolder = &quot;&quot; Then Exit Sub
+    vRes = OpenRes(sFolder, ToLocale(&quot;en-US&quot;))
+    If Not IsEmpty(vRes) Then
+        oResEn = vRes
+        bEnOK = True
+    End If
+    aWant = ToLocale(ReadUILocale())
+    If aWant.Language = &quot;&quot; Then Exit Sub
+    vRes = OpenRes(sFolder, aWant)
+    If IsEmpty(vRes) Then Exit Sub
+    oResCur = vRes
+    PickLocale oResCur, aWant
+    aCur = oResCur.getCurrentLocale()
+    &apos; English needs no second set of texts
+    If aCur.Language = aWant.Language Then
+        If Not (aCur.Language = &quot;en&quot; And aCur.Country = &quot;US&quot;) Then bCurOK = True
+    End If
+End Sub
+
+&apos; Text of a key in the active language (bCur = True) or in English (False), &quot;&quot; if not there
+Function ResolveIn(bCur As Boolean, sKey As String) As String
+    ResolveIn = &quot;&quot;
+    On Error GoTo NotFound
+    If bCur Then
+        If bCurOK Then ResolveIn = oResCur.resolveString(sKey)
+    Else
+        If bEnOK Then ResolveIn = oResEn.resolveString(sKey)
+    End If
+    Exit Function
+
+NotFound:
+    ResolveIn = &quot;&quot;
+End Function
+
+&apos; Run it to check what was detected
+Sub ShowLanguage()
+    Dim sFile As String, aCur As Variant
+    InitRes
+    sFile = &quot;English (CopyInsert_en_US)&quot;
+    If bCurOK Then
+        aCur = oResCur.getCurrentLocale()
+        sFile = L10N_BASE &amp; &quot;_&quot; &amp; aCur.Language
+        If aCur.Country &lt;&gt; &quot;&quot; Then sFile = sFile &amp; &quot;_&quot; &amp; aCur.Country
+    End If
+    MsgBox &quot;UI locale: &quot; &amp; ReadUILocale() &amp; Chr(10) &amp; _
+           &quot;Folder: &quot; &amp; L10nFolder() &amp; Chr(10) &amp; _
+           &quot;Language file used: &quot; &amp; sFile &amp; Chr(10) &amp; _
+           Txt(&quot;m.copy.cells&quot;)
+End Sub
+
+&apos; Text of a key in the active language (falls back to English, then to the key itself)
+Function Txt(sKey As String) As String
+    Dim s As String
+    InitRes
+    s = ResolveIn(True, sKey)
+    If s = &quot;&quot; Then s = ResolveIn(False, sKey)
+    If s = &quot;&quot; Then s = sKey
+    Txt = s
+End Function
+
+&apos; Start of the Undo titles of our operations (the step title is prefix + kind)
+Function UndoPrefix() As String
+    UndoPrefix = Txt(&quot;undo.prefix&quot;)
+End Function
+
+
+&apos;=====================================================================
+&apos;  1. Enable the context-menu interceptor and the Undo listener
+&apos;=====================================================================
+Sub EnableMenu()
+    Dim oCtrl As Object
+    If Not IsCalcDoc(ThisComponent) Then Exit Sub
+    If IsNull(oInterceptor) Then
+        oInterceptor = CreateUnoListener(&quot;CMI_&quot;, &quot;com.sun.star.ui.XContextMenuInterceptor&quot;)
+    End If
+    oCtrl = ThisComponent.CurrentController
+    oCtrl.releaseContextMenuInterceptor(oInterceptor)   &apos; avoid duplicates
+    oCtrl.registerContextMenuInterceptor(oInterceptor)
+
+    &apos; --- Undo listener: reselects the source after an Undo ---
+    On Error Resume Next
+    If IsNull(oUndoListener) Then
+        oUndoListener = CreateUnoListener(&quot;UM_&quot;, &quot;com.sun.star.document.XUndoManagerListener&quot;)
+    End If
+    ThisComponent.UndoManager.removeUndoManagerListener(oUndoListener)
+    ThisComponent.UndoManager.addUndoManagerListener(oUndoListener)
+    On Error GoTo 0
+End Sub
+
+Sub AddMenuItem(oMenu As Object, nPos As Long, sText As String, sMacro As String)
+    Dim oItem As Object
+    oItem = oMenu.createInstance(&quot;com.sun.star.ui.ActionTrigger&quot;)
+    oItem.setPropertyValue(&quot;Text&quot;, sText)
+    oItem.setPropertyValue(&quot;CommandURL&quot;, MACRO_BASE &amp; sMacro &amp; MACRO_TAIL)
+    oMenu.insertByIndex(nPos, oItem)
+End Sub
+
+Sub AddMenuSeparator(oMenu As Object, nPos As Long)
+    Dim oSep As Object
+    oSep = oMenu.createInstance(&quot;com.sun.star.ui.ActionTriggerSeparator&quot;)
+    oSep.setPropertyValue(&quot;SeparatorType&quot;, com.sun.star.ui.ActionTriggerSeparatorType.LINE)
+    oMenu.insertByIndex(nPos, oSep)
+End Sub
+
+&apos; Submenu for cells: above / below / left / right
+Sub AddCellSubmenu(oMenu As Object, nPos As Long, sTitle As String, sPrefix As String)
+    Dim oSub As Object, oItem As Object
+    oSub = oMenu.createInstance(&quot;com.sun.star.ui.ActionTriggerContainer&quot;)
+    &apos; The entry that matches the keyboard shortcut (Alt+C, Alt+P, Alt+X, Alt+M) runs the
+    &apos; ...Before macro, which does the same as ...Above (or ...Left if CELLS_SHIFT_DOWN is
+    &apos; False). LibreOffice shows the shortcut next to an entry only if it runs that very macro.
+    If CELLS_SHIFT_DOWN Then
+        AddMenuItem oSub, 0, Txt(&quot;dir.above&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Before&quot;
+        AddMenuItem oSub, 1, Txt(&quot;dir.below&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Below&quot;
+        AddMenuItem oSub, 2, Txt(&quot;dir.left&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Left&quot;
+        AddMenuItem oSub, 3, Txt(&quot;dir.right&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Right&quot;
+    Else
+        AddMenuItem oSub, 0, Txt(&quot;dir.above&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Above&quot;
+        AddMenuItem oSub, 1, Txt(&quot;dir.below&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Below&quot;
+        AddMenuItem oSub, 2, Txt(&quot;dir.left&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Before&quot;
+        AddMenuItem oSub, 3, Txt(&quot;dir.right&quot;) &amp; &quot;...&quot;, sPrefix &amp; &quot;Right&quot;
+    End If
+
+    oItem = oMenu.createInstance(&quot;com.sun.star.ui.ActionTrigger&quot;)
+    oItem.setPropertyValue(&quot;Text&quot;, sTitle)
+    oItem.setPropertyValue(&quot;SubContainer&quot;, oSub)
+    oMenu.insertByIndex(nPos, oItem)
+End Sub
+
+&apos; Submenu for rows / columns: first entry = &quot;before&quot; (above / left), second = &quot;after&quot; (below / right)
+Sub AddBeforeAfterSubmenu(oMenu As Object, nPos As Long, sTitle As String, _
+                          sBeforeTxt As String, sAfterTxt As String, _
+                          sBeforeMacro As String, sAfterMacro As String)
+    Dim oSub As Object, oItem As Object
+    oSub = oMenu.createInstance(&quot;com.sun.star.ui.ActionTriggerContainer&quot;)
+    AddMenuItem oSub, 0, sBeforeTxt &amp; &quot;...&quot;, sBeforeMacro
+    AddMenuItem oSub, 1, sAfterTxt &amp; &quot;...&quot;, sAfterMacro
+
+    oItem = oMenu.createInstance(&quot;com.sun.star.ui.ActionTrigger&quot;)
+    oItem.setPropertyValue(&quot;Text&quot;, sTitle)
+    oItem.setPropertyValue(&quot;SubContainer&quot;, oSub)
+    oMenu.insertByIndex(nPos, oItem)
+End Sub
+
+&apos; True if the text is the title of one of our submenu parents (active language or English)
+Function IsOurLabel(sTxt As String) As Boolean
+    Dim aKinds As Variant, aActs As Variant
+    Dim j As Long, k As Long, sKey As String
+    IsOurLabel = False
+    If Len(sTxt) = 0 Then Exit Function
+    InitRes
+    aKinds = Array(&quot;cells&quot;, &quot;rows&quot;, &quot;columns&quot;)
+    aActs = Array(&quot;copy&quot;, &quot;paste&quot;, &quot;cut&quot;, &quot;move&quot;)
+    For j = 0 To UBound(aKinds)
+        For k = 0 To UBound(aActs)
+            sKey = &quot;m.&quot; &amp; aActs(k) &amp; &quot;.&quot; &amp; aKinds(j)
+            If sTxt = ResolveIn(True, sKey) Or sTxt = ResolveIn(False, sKey) Then
+                IsOurLabel = True
+                Exit Function
+            End If
+        Next k
+    Next j
+End Function
+
+&apos; True if one of our entries (flat item or submenu parent) is already in the menu
+Function MenuHasOurEntries(oMenu As Object) As Boolean
+    Dim i As Long, oItem As Object, sCmd As String, sTxt As String
+    MenuHasOurEntries = False
+    On Error Resume Next
+    For i = 0 To oMenu.Count - 1
+        oItem = oMenu.getByIndex(i)
+        sCmd = &quot;&quot; : sTxt = &quot;&quot;
+        sCmd = oItem.getPropertyValue(&quot;CommandURL&quot;)
+        sTxt = oItem.getPropertyValue(&quot;Text&quot;)
+        If Left(sCmd, Len(MACRO_BASE)) = MACRO_BASE Then
+            MenuHasOurEntries = True
+            Exit For
+        End If
+        If IsOurLabel(sTxt) Then
+            MenuHasOurEntries = True
+            Exit For
+        End If
+    Next i
+End Function
+
+Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
+    Dim oMenu As Object, oItem As Object
+    Dim oSelSupp As Object, oSel As Variant, aRaw As Variant, nSheet As Long
+    Dim i As Long, n As Long, bHasCut As Boolean, sCmd As String
+    Dim sMode As String, bCellMode As Boolean, sKind As String
+    Dim sBeforeTxt As String, sAfterTxt As String, sBeforeLow As String, sAfterLow As String
+    Dim sCopy As String, sPaste As String, sCut As String, sMove As String
+    Dim sErr As String, nLine As Long
+
+    CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.IGNORED
+    On Error GoTo Oops
+
+    oSelSupp = oEvent.Selection
+    If IsNull(oSelSupp) Or IsEmpty(oSelSupp) Then Exit Function
+    oSel = oSelSupp.getSelection()
+    If IsNull(oSel) Or IsEmpty(oSel) Then Exit Function
+    aRaw = ReadSelection(oSel, nSheet)       &apos; one range, or the ranges of a Ctrl selection
+    If IsEmpty(aRaw) Then Exit Function
+
+    oMenu = oEvent.ActionTriggerContainer
+    If IsNull(oMenu) Or IsEmpty(oMenu) Then Exit Function
+
+    &apos; already added by another registered interceptor?
+    If MenuHasOurEntries(oMenu) Then Exit Function
+
+    &apos; only touch menus that contain &quot;Cut&quot;
+    For i = 0 To oMenu.Count - 1
+        oItem = oMenu.getByIndex(i)
+        sCmd = &quot;&quot;
+        If Not IsNull(oItem) And Not IsEmpty(oItem) Then
+            If oItem.PropertySetInfo.hasPropertyByName(&quot;CommandURL&quot;) Then
+                sCmd = oItem.CommandURL
+            End If
+        End If
+        If sCmd = &quot;.uno:Cut&quot; Then
+            bHasCut = True
+            Exit For
+        End If
+    Next i
+    If Not bHasCut Then Exit Function
+
+    &apos; --- what kind of selection is it? ---
+    sMode = KindOfRanges(ThisComponent, nSheet, aRaw)
+    If sMode = &quot;WHOLE&quot; Or sMode = &quot;MIXED&quot; Then Exit Function   &apos; nothing to offer
+    bCellMode = (sMode = &quot;CELLS&quot;)
+    If bCellMode Then
+        sKind = &quot;cells&quot;
+    ElseIf sMode = &quot;ROWS&quot; Then
+        sKind = &quot;rows&quot;
+        sBeforeTxt = Txt(&quot;dir.above&quot;) : sAfterTxt = Txt(&quot;dir.below&quot;)
+        sBeforeLow = Txt(&quot;low.above&quot;) : sAfterLow = Txt(&quot;low.below&quot;)
+    Else
+        sKind = &quot;columns&quot;
+        sBeforeTxt = Txt(&quot;dir.left&quot;) : sAfterTxt = Txt(&quot;dir.right&quot;)
+        sBeforeLow = Txt(&quot;low.left&quot;) : sAfterLow = Txt(&quot;low.right&quot;)
+    End If
+    sCopy = Txt(&quot;m.copy.&quot; &amp; sKind)
+    sPaste = Txt(&quot;m.paste.&quot; &amp; sKind)
+    sCut = Txt(&quot;m.cut.&quot; &amp; sKind)
+    sMove = Txt(&quot;m.move.&quot; &amp; sKind)
+
+    n = 0
+    If bCellMode Then
+        If USE_SUBMENUS Then
+            AddCellSubmenu oMenu, n, sCopy, &quot;StartCopy&quot; : n = n + 1
+            AddCellSubmenu oMenu, n, sPaste, &quot;StartPasteSpecial&quot; : n = n + 1
+            AddCellSubmenu oMenu, n, sCut, &quot;StartCut&quot; : n = n + 1
+            AddCellSubmenu oMenu, n, sMove, &quot;StartMove&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+        Else
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.above&quot;) &amp; &quot;...&quot;, &quot;StartCopyAbove&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.below&quot;) &amp; &quot;...&quot;, &quot;StartCopyBelow&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.left&quot;) &amp; &quot;...&quot;, &quot;StartCopyLeft&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.right&quot;) &amp; &quot;...&quot;, &quot;StartCopyRight&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; Txt(&quot;low.above&quot;) &amp; &quot;...&quot;, &quot;StartPasteSpecialAbove&quot; : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; Txt(&quot;low.below&quot;) &amp; &quot;...&quot;, &quot;StartPasteSpecialBelow&quot; : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; Txt(&quot;low.left&quot;) &amp; &quot;...&quot;, &quot;StartPasteSpecialLeft&quot; : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; Txt(&quot;low.right&quot;) &amp; &quot;...&quot;, &quot;StartPasteSpecialRight&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; Txt(&quot;low.above&quot;) &amp; &quot;...&quot;, &quot;StartCutAbove&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; Txt(&quot;low.below&quot;) &amp; &quot;...&quot;, &quot;StartCutBelow&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; Txt(&quot;low.left&quot;) &amp; &quot;...&quot;, &quot;StartCutLeft&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; Txt(&quot;low.right&quot;) &amp; &quot;...&quot;, &quot;StartCutRight&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; Txt(&quot;low.above&quot;) &amp; &quot;...&quot;, &quot;StartMoveAbove&quot; : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; Txt(&quot;low.below&quot;) &amp; &quot;...&quot;, &quot;StartMoveBelow&quot; : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; Txt(&quot;low.left&quot;) &amp; &quot;...&quot;, &quot;StartMoveLeft&quot; : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; Txt(&quot;low.right&quot;) &amp; &quot;...&quot;, &quot;StartMoveRight&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+        End If
+    Else
+        If USE_SUBMENUS Then
+            AddBeforeAfterSubmenu oMenu, n, sCopy, sBeforeTxt, sAfterTxt, &quot;StartCopyBefore&quot;, &quot;StartCopy&quot; : n = n + 1
+            AddBeforeAfterSubmenu oMenu, n, sPaste, sBeforeTxt, sAfterTxt, &quot;StartPasteSpecialBefore&quot;, &quot;StartPasteSpecial&quot; : n = n + 1
+            AddBeforeAfterSubmenu oMenu, n, sCut, sBeforeTxt, sAfterTxt, &quot;StartCutBefore&quot;, &quot;StartCut&quot; : n = n + 1
+            AddBeforeAfterSubmenu oMenu, n, sMove, sBeforeTxt, sAfterTxt, &quot;StartMoveBefore&quot;, &quot;StartMove&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+        Else
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; sBeforeLow &amp; &quot;...&quot;, &quot;StartCopyBefore&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCopy &amp; &quot; &quot; &amp; sAfterLow &amp; &quot;...&quot;, &quot;StartCopy&quot; : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; sBeforeLow &amp; &quot;...&quot;, &quot;StartPasteSpecialBefore&quot; : n = n + 1
+            AddMenuItem oMenu, n, sPaste &amp; &quot; &quot; &amp; sAfterLow &amp; &quot;...&quot;, &quot;StartPasteSpecial&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; sBeforeLow &amp; &quot;...&quot;, &quot;StartCutBefore&quot; : n = n + 1
+            AddMenuItem oMenu, n, sCut &amp; &quot; &quot; &amp; sAfterLow &amp; &quot;...&quot;, &quot;StartCut&quot; : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; sBeforeLow &amp; &quot;...&quot;, &quot;StartMoveBefore&quot; : n = n + 1
+            AddMenuItem oMenu, n, sMove &amp; &quot; &quot; &amp; sAfterLow &amp; &quot;...&quot;, &quot;StartMove&quot; : n = n + 1
+            AddMenuSeparator oMenu, n : n = n + 1
+        End If
+    End If
+
+    CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.CONTINUE_MODIFIED
+    Exit Function
+
+Oops:
+    sErr = Error$ : nLine = Erl
+    MsgBox Txt(&quot;err.menu&quot;) &amp; nLine &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+    CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.IGNORED
+End Function
+
+Sub CMI_disposing(oEvent As Object)
+End Sub
+
+
+&apos;=====================================================================
+&apos;  2. Temporary document properties
+&apos;     (they survive between the menu command and the callbacks)
+&apos;=====================================================================
+Sub SetDocProp(oDoc As Object, sName As String, sValue As String)
+    Dim oProps As Object, bMod As Boolean
+    bMod = oDoc.isModified()
+    oProps = oDoc.DocumentProperties.UserDefinedProperties
+    On Error Resume Next
+    oProps.removeProperty(sName)
+    On Error GoTo 0
+    oProps.addProperty(sName, 128, sValue)      &apos; 128 = REMOVEABLE
+    oDoc.setModified(bMod)
+End Sub
+
+Function GetDocProp(oDoc As Object, sName As String) As String
+    Dim oProps As Object
+    GetDocProp = &quot;&quot;
+    On Error Resume Next
+    oProps = oDoc.DocumentProperties.UserDefinedProperties
+    GetDocProp = oProps.getPropertyValue(sName)
+    On Error GoTo 0
+End Function
+
+Sub DelDocProp(oDoc As Object, sName As String)
+    Dim oProps As Object, bMod As Boolean
+    bMod = oDoc.isModified()
+    On Error Resume Next
+    oProps = oDoc.DocumentProperties.UserDefinedProperties
+    oProps.removeProperty(sName)
+    On Error GoTo 0
+    oDoc.setModified(bMod)
+End Sub
+
+Sub SaveState(oDoc As Object, sValue As String)
+    SetDocProp oDoc, STATE_NAME, sValue
+End Sub
+
+Function LoadState(oDoc As Object) As String
+    LoadState = GetDocProp(oDoc, STATE_NAME)
+End Function
+
+Sub ClearState(oDoc As Object)
+    DelDocProp oDoc, STATE_NAME
+End Sub
+
+
+&apos;=====================================================================
+&apos;  3. Undo listener: after an Undo of one of our operations,
+&apos;     select the source again
+&apos;=====================================================================
+&apos; An Undo happened
+Sub UM_actionUndone(oEvent As Object)
+    Dim oDoc As Object, oCtrl As Object, oSheet As Object
+    Dim sTitle As String, sTopTitle As String, sInfo As String, sPref As String
+    Dim a() As String
+
+    On Error Resume Next
+    sTitle = oEvent.UndoActionTitle
+    sPref = UndoPrefix()
+    oDoc = ThisComponent
+    sInfo = &quot;&quot;
+
+    If Left(sTitle, Len(sPref)) = sPref Then
+        &apos; our copy / cut / move / paste special insertion was undone: select the original source
+        sInfo = GetDocProp(oDoc, UNDO_NAME)
+        DelDocProp oDoc, UNDO_NAME
+        DelDocProp oDoc, PSSRC_NAME
+    ElseIf GetDocProp(oDoc, PSSRC_NAME) &lt;&gt; &quot;&quot; Then
+        &apos; a paste special is pending. If the step now on top of the Undo stack is our
+        &apos; insertion, then the step just undone was the paste itself.
+        sTopTitle = &quot;&quot;
+        If oDoc.UndoManager.isUndoPossible() Then
+            sTopTitle = oDoc.UndoManager.getCurrentUndoActionTitle()
+        End If
+        If Left(sTopTitle, Len(sPref)) = sPref Then
+            sInfo = GetDocProp(oDoc, PSSRC_NAME)       &apos; the source where it sits right now
+            DelDocProp oDoc, PSSRC_NAME
+        End If
+    End If
+    If sInfo = &quot;&quot; Then Exit Sub
+
+    a = Split(sInfo, &quot;|&quot;)
+    oCtrl = oDoc.CurrentController
+    oSheet = oDoc.Sheets.getByIndex(CLng(a(0)))
+    oCtrl.setActiveSheet(oSheet)
+    &apos; a(1) holds all the source ranges: they are all selected again
+    oCtrl.select(BuildSelection(oDoc, CLng(a(0)), StringToRanges(a(1))))
+End Sub
+
+&apos; the other listener methods must exist, but do nothing
+Sub UM_undoActionAdded(oEvent As Object)
+End Sub
+
+Sub UM_actionRedone(oEvent As Object)
+End Sub
+
+Sub UM_allActionsCleared(oEvent As Object)
+End Sub
+
+Sub UM_redoActionsCleared(oEvent As Object)
+End Sub
+
+Sub UM_resetAll(oEvent As Object)
+End Sub
+
+Sub UM_enteredContext(oEvent As Object)
+End Sub
+
+Sub UM_enteredHiddenContext(oEvent As Object)
+End Sub
+
+Sub UM_leftContext(oEvent As Object)
+End Sub
+
+Sub UM_leftHiddenContext(oEvent As Object)
+End Sub
+
+Sub UM_cancelledContext(oEvent As Object)
+End Sub
+
+Sub UM_disposing(oEvent As Object)
+End Sub
+
+
+&apos;=====================================================================
+&apos;  4. Menu commands: remember the source and start range selection
+&apos;     ArmPendingEx(cut, move, before, paste special, shift cells right)
+&apos;     &quot;Before&quot; = above (rows, cells) or to the left (columns, cells)
+&apos;=====================================================================
+&apos; --- rows / columns (after / before); cells use the CELLS_SHIFT_DOWN default ---
+&apos; True if the &quot;before&quot; macros (and so the shortcut keys) shift cells down, False if right.
+&apos; The Edit menu uses it to put the shortcut label on the right entry.
+Function CellsShiftDown() As Boolean
+    CellsShiftDown = CELLS_SHIFT_DOWN
+End Function
+
+Sub StartCopy()
+    ArmPending False, False, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartCopyBefore()
+    ArmPending False, True, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartPasteSpecial()
+    ArmPending False, False, True, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartPasteSpecialBefore()
+    ArmPending False, True, True, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartCut()
+    ArmPending True, False, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartCutBefore()
+    ArmPending True, True, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartMove()
+    ArmPendingEx True, True, False, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+Sub StartMoveBefore()
+    ArmPendingEx True, True, True, False, Not CELLS_SHIFT_DOWN
+End Sub
+
+&apos; --- cells: explicit direction ---
+Sub StartCopyBelow()
+    ArmPending False, False, False, False
+End Sub
+
+Sub StartCopyAbove()
+    ArmPending False, True, False, False
+End Sub
+
+Sub StartCopyRight()
+    ArmPending False, False, False, True
+End Sub
+
+Sub StartCopyLeft()
+    ArmPending False, True, False, True
+End Sub
+
+Sub StartPasteSpecialBelow()
+    ArmPending False, False, True, False
+End Sub
+
+Sub StartPasteSpecialAbove()
+    ArmPending False, True, True, False
+End Sub
+
+Sub StartPasteSpecialRight()
+    ArmPending False, False, True, True
+End Sub
+
+Sub StartPasteSpecialLeft()
+    ArmPending False, True, True, True
+End Sub
+
+Sub StartCutBelow()
+    ArmPending True, False, False, False
+End Sub
+
+Sub StartCutAbove()
+    ArmPending True, True, False, False
+End Sub
+
+Sub StartCutRight()
+    ArmPending True, False, False, True
+End Sub
+
+Sub StartCutLeft()
+    ArmPending True, True, False, True
+End Sub
+
+Sub StartMoveBelow()
+    ArmPendingEx True, True, False, False, False
+End Sub
+
+Sub StartMoveAbove()
+    ArmPendingEx True, True, True, False, False
+End Sub
+
+Sub StartMoveRight()
+    ArmPendingEx True, True, False, False, True
+End Sub
+
+Sub StartMoveLeft()
+    ArmPendingEx True, True, True, False, True
+End Sub
+
+&apos; Wording of the prompt window (kept short: the window is narrow)
+Function BuildTitle(sMode As String, bBefore As Boolean, bSpecial As Boolean, bRight As Boolean) As String
+    Dim sWhere As String, sPrefix As String
+    If sMode = &quot;CELLS&quot; Then
+        If bRight Then
+            If bBefore Then sWhere = Txt(&quot;t.left&quot;) Else sWhere = Txt(&quot;t.right&quot;)
+        Else
+            If bBefore Then sWhere = Txt(&quot;t.above&quot;) Else sWhere = Txt(&quot;t.below&quot;)
+        End If
+    ElseIf sMode = &quot;ROWS&quot; Then
+        If bBefore Then sWhere = Txt(&quot;t.above&quot;) Else sWhere = Txt(&quot;t.below&quot;)
+    Else
+        If bBefore Then sWhere = Txt(&quot;t.left&quot;) Else sWhere = Txt(&quot;t.right&quot;)
+    End If
+    If bSpecial Then sPrefix = Txt(&quot;t.special&quot;) Else sPrefix = Txt(&quot;t.insert&quot;)
+    BuildTitle = sPrefix &amp; sWhere &amp; Txt(&quot;t.click&quot;)
+End Function
+
+&apos; Opens the small &quot;click the destination&quot; window
+Sub StartDestinationPick(oCtrl As Object, sTitle As String)
+    Dim aArgs(1) As New com.sun.star.beans.PropertyValue
+    aArgs(0).Name = &quot;Title&quot;
+    aArgs(0).Value = sTitle
+    aArgs(1).Name = &quot;CloseOnMouseRelease&quot;
+    aArgs(1).Value = True
+    oCtrl.startRangeSelection(aArgs())
+End Sub
+
+&apos; Copy / Cut / Paste special (no &quot;move&quot;)
+Sub ArmPending(bCut As Boolean, bBefore As Boolean, bSpecial As Boolean, bRight As Boolean)
+    ArmPendingEx bCut, False, bBefore, bSpecial, bRight
+End Sub
+
+Sub ArmPendingEx(bCut As Boolean, bMove As Boolean, bBefore As Boolean, bSpecial As Boolean, bRight As Boolean)
+    Dim oDoc As Object, oCtrl As Object, oSel As Variant
+    Dim aRaw As Variant, aR As Variant, nSheet As Long, sKind As String
+    Dim sMode As String, sCut As String, sBefore As String, sSpecial As String
+    Dim sRight As String
+
+    If Not IsCalcDoc(ThisComponent) Then Exit Sub
+
+    oDoc = ThisComponent
+    oCtrl = oDoc.CurrentController
+    oSel = oCtrl.Selection
+    aRaw = ReadSelection(oSel, nSheet)      &apos; one range, or the ranges of a Ctrl selection
+    If IsEmpty(aRaw) Then
+        MsgBox Txt(&quot;msg.select&quot;), 48
+        Exit Sub
+    End If
+
+    sKind = KindOfRanges(oDoc, nSheet, aRaw)
+    If sKind = &quot;WHOLE&quot; Then
+        MsgBox Txt(&quot;msg.wholesheet&quot;), 48
+        Exit Sub
+    ElseIf sKind = &quot;MIXED&quot; Then
+        MsgBox Txt(&quot;msg.multi&quot;), 48
+        Exit Sub
+    End If
+
+    If sKind = &quot;ROWS&quot; Then
+        sMode = &quot;ROWS&quot;
+        aR = NormalizeRanges(aRaw, 1)       &apos; sheet order, touching ranges merged
+    ElseIf sKind = &quot;COLS&quot; Then
+        sMode = &quot;COLS&quot;
+        aR = NormalizeRanges(aRaw, 0)
+    Else
+        sMode = &quot;CELLS&quot;
+        aR = aRaw
+    End If
+    If bCut Then bSpecial = False         &apos; a cut / move is always a plain move
+    &apos; the &quot;cut&quot; field of the saved state: 0 = copy, 1 = cut, 2 = move
+    If bMove Then
+        sCut = &quot;2&quot;
+    ElseIf bCut Then
+        sCut = &quot;1&quot;
+    Else
+        sCut = &quot;0&quot;
+    End If
+    If bSpecial Then sSpecial = &quot;1&quot; Else sSpecial = &quot;0&quot;
+    If bBefore Then sBefore = &quot;1&quot; Else sBefore = &quot;0&quot;
+    If bRight Then sRight = &quot;1&quot; Else sRight = &quot;0&quot;
+
+    SaveState oDoc, sMode &amp; &quot;|&quot; &amp; sCut &amp; &quot;|&quot; &amp; sBefore &amp; &quot;|&quot; &amp; sSpecial &amp; &quot;|&quot; &amp; sRight &amp; &quot;|&quot; &amp; _
+              nSheet &amp; &quot;|&quot; &amp; RangesToString(aR)
+
+    oSelListener = CreateUnoListener(&quot;RS_&quot;, &quot;com.sun.star.sheet.XRangeSelectionListener&quot;)
+    oCtrl.addRangeSelectionListener(oSelListener)
+
+    StartDestinationPick oCtrl, BuildTitle(sMode, bBefore, bSpecial, bRight)
+End Sub
+
+Sub CancelPending()
+    If Not IsCalcDoc(ThisComponent) Then Exit Sub
+    ClearState ThisComponent
+End Sub
+
+
+&apos;=====================================================================
+&apos;  5. Range-selection callbacks: the chosen cell = the destination
+&apos;=====================================================================
+
+&apos; Reads the chosen destination and returns it as plain numbers:
+&apos; Array(sheet, firstColumn, firstRow, lastColumn, lastRow).
+&apos; Returns Empty if it is not a usable cell (empty text, a click on a button
+&apos; of the small window, a bad sheet name...)
+Function ResolveDestination(oDoc As Object, oEvent As Object, nDefSheet As Long) As Variant
+    Dim sDesc As String, sSheetName As String, sCell As String
+    Dim p As Long, i As Long
+    Dim oSheet As Object, oRange As Object, oA As Object
+
+    On Error GoTo Bad
+    sDesc = oEvent.RangeDescriptor
+    If Len(Trim(sDesc)) = 0 Then Exit Function
+
+    &apos; e.g. &quot;$Sheet1.$A$10&quot; : the last &quot;.&quot; separates sheet name and cell
+    p = 0
+    For i = Len(sDesc) To 1 Step -1
+        If Mid(sDesc, i, 1) = &quot;.&quot; Then
+            p = i
+            Exit For
+        End If
+    Next i
+    If p &gt; 0 Then
+        sSheetName = Left(sDesc, p - 1)
+        sSheetName = Replace(sSheetName, &quot;$&quot;, &quot;&quot;)
+        sSheetName = Replace(sSheetName, &quot;&apos;&quot;, &quot;&quot;)
+        sCell = Mid(sDesc, p + 1)
+        oSheet = oDoc.Sheets.getByName(sSheetName)
+    Else
+        sCell = sDesc
+        oSheet = oDoc.Sheets.getByIndex(nDefSheet)
+    End If
+    If Len(Trim(sCell)) = 0 Then Exit Function
+
+    oRange = oSheet.getCellRangeByName(sCell)
+    oA = oRange.RangeAddress
+    ResolveDestination = Array(CLng(oA.Sheet), CLng(oA.StartColumn), CLng(oA.StartRow), _
+                                CLng(oA.EndColumn), CLng(oA.EndRow))
+    Exit Function
+
+Bad:
+    &apos; returns Empty
+End Function
+
+&apos; Reopens the &quot;click the destination&quot; window after a bad click
+Function RetryPick(oDoc As Object, a() As String) As Boolean
+    RetryPick = False
+    On Error GoTo Fail
+    StartDestinationPick oDoc.CurrentController, _
+        BuildTitle(a(0), (a(2) = &quot;1&quot;), (a(3) = &quot;1&quot;), (a(4) = &quot;1&quot;))
+    RetryPick = True
+    Exit Function
+Fail:
+    ClearState oDoc
+    MsgBox Txt(&quot;msg.noreopen&quot;), 48
+End Function
+
+Sub RS_done(oEvent As Object)
+    Dim oDoc As Object, vT As Variant
+    Dim oSA As New com.sun.star.table.CellRangeAddress
+    Dim sState As String, sBase As String, a() As String
+    Dim j As Long, sStep As String
+    Dim sErr As String, nLine As Long
+    On Error GoTo Oops
+
+    sStep = Txt(&quot;step.load&quot;)
+    oDoc = ThisComponent
+    sState = LoadState(oDoc)
+    If sState = &quot;&quot; Then Exit Sub          &apos; nothing pending (or already handled)
+    a = Split(sState, &quot;|&quot;)
+
+    &apos; another registered listener already rejected this same click a moment ago
+    If UBound(a) &gt;= 7 Then
+        If Abs(CLng(Timer) - CLng(a(7))) &lt;= 1 Then Exit Sub
+    End If
+
+    &apos; --- check the destination BEFORE touching anything ---
+    sStep = Txt(&quot;step.read&quot;)
+    vT = ResolveDestination(oDoc, oEvent, CLng(a(5)))
+    If Not IsArray(vT) Then
+        MsgBox Txt(&quot;msg.point1&quot;) &amp; Chr(10) &amp; Chr(10) &amp; _
+               Txt(&quot;msg.point2&quot;) &amp; Chr(10) &amp; _
+               Txt(&quot;msg.point3&quot;), 48
+        If RetryPick(oDoc, a) Then
+            &apos; remember when this click was rejected so other listeners skip it
+            sBase = a(0)
+            For j = 1 To 6
+                sBase = sBase &amp; &quot;|&quot; &amp; a(j)
+            Next j
+            SaveState oDoc, sBase &amp; &quot;|&quot; &amp; CLng(Timer)
+        End If
+        Exit Sub
+    End If
+
+    sStep = Txt(&quot;step.prepare&quot;)
+    ClearState oDoc
+
+    &apos; --- rebuild the source description ---
+    sSrcMode = a(0)
+    bCutMode = (a(1) = &quot;1&quot; Or a(1) = &quot;2&quot;)     &apos; cut and move both relocate the content
+    bMoveMode = (a(1) = &quot;2&quot;)                  &apos; move: the source cells are kept, only emptied
+    bBeforeMode = (a(2) = &quot;1&quot;)
+    bSpecialMode = (a(3) = &quot;1&quot;)
+    bShiftRight = (a(4) = &quot;1&quot;)
+    oSA.Sheet = CInt(a(5))
+    aSrcRanges = StringToRanges(a(6))
+    oSA.StartColumn = aSrcRanges(0, 0) : oSA.StartRow = aSrcRanges(1, 0)
+    oSA.EndColumn = aSrcRanges(2, 0)   : oSA.EndRow = aSrcRanges(3, 0)
+    oSrcAddr = oSA                       &apos; first range (the only one for cells)
+    oSrcDoc = oDoc
+
+    sStep = Txt(&quot;step.run&quot;)
+    If bSpecialMode Then
+        PerformPasteSpecial CLng(vT(0)), CLng(vT(1)), CLng(vT(2)), CLng(vT(3)), CLng(vT(4))
+    Else
+        PerformInsert CLng(vT(0)), CLng(vT(1)), CLng(vT(2)), CLng(vT(3)), CLng(vT(4))
+    End If
+    Exit Sub
+
+Oops:
+    sErr = Error$ : nLine = Erl
+    MsgBox Txt(&quot;err.range&quot;) &amp; nLine &amp; Txt(&quot;err.while&quot;) &amp; sStep &amp; &quot;)&quot; &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+End Sub
+
+Sub RS_aborted(oEvent As Object)
+    ClearState ThisComponent
+End Sub
+
+Sub RS_disposing(oEvent As Object)
+End Sub
+
+
+&apos;=====================================================================
+&apos;  6. Copy / Cut / Move: do the work (Cut and Move use moveRange so formulas follow)
+&apos;     Cut removes the emptied source rows / columns / cells afterwards,
+&apos;     Move leaves them in place (empty).
+&apos;     The destination arrives as plain numbers (tSheet, tC1, tR1, tC2, tR2)
+&apos;=====================================================================
+Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As Long)
+    Dim oDoc As Object, oSrcSheet As Object, oDstSheet As Object
+    Dim oT As New com.sun.star.table.CellRangeAddress
+    Dim oS As New com.sun.star.table.CellRangeAddress
+    Dim oD As New com.sun.star.table.CellAddress
+    Dim oIns As New com.sun.star.table.CellRangeAddress
+    Dim bSame As Boolean, bOverlap As Boolean, bRemove As Boolean
+    Dim nIns As Long, nW As Long, nH As Long, nCol As Long, nRow As Long
+    Dim nR1 As Long, nR2 As Long, nC1 As Long, nC2 As Long   &apos; final position of the pasted data
+    Dim bUndo As Boolean, sErr As String, nLine As Long
+    Dim aSr As Variant, nB As Long, i As Long, nTot As Long, nOff As Long
+    Dim nSt As Long, nEn As Long, nLen As Long, nAbove As Long
+
+    On Error GoTo ErrHandler
+
+    aSr = aSrcRanges                        &apos; all the source ranges (rows and columns: sheet order)
+    nB = UBound(aSr, 2) + 1
+    oT.Sheet = tSheet
+    oT.StartColumn = tC1 : oT.StartRow = tR1
+    oT.EndColumn = tC2 : oT.EndRow = tR2
+
+    oDoc = oSrcDoc
+    DelDocProp oDoc, PSSRC_NAME            &apos; forget any paste special that was cancelled earlier
+    bSame = (oSrcAddr.Sheet = oT.Sheet)
+    bRemove = bCutMode And Not bMoveMode   &apos; only a cut removes the emptied source
+    oSrcSheet = oDoc.Sheets.getByIndex(oSrcAddr.Sheet)
+    oDstSheet = oDoc.Sheets.getByIndex(oT.Sheet)
+
+    oS.Sheet = oSrcAddr.Sheet
+    oS.StartColumn = oSrcAddr.StartColumn : oS.EndColumn = oSrcAddr.EndColumn
+    oS.StartRow = oSrcAddr.StartRow : oS.EndRow = oSrcAddr.EndRow
+    nW = oS.EndColumn - oS.StartColumn + 1
+    nH = oS.EndRow - oS.StartRow + 1
+
+    Select Case sSrcMode
+    &apos;---------------------------------------------------------------- ROWS
+    &apos; One or several ranges of complete rows. Room is made for all of them together, then
+    &apos; each range goes into the new rows in turn: consecutive, in sheet order.
+    Case &quot;ROWS&quot;
+        If bBeforeMode Then nIns = oT.StartRow Else nIns = oT.EndRow + 1
+        nTot = 0 : nAbove = 0
+        For i = 0 To nB - 1
+            nLen = aSr(3, i) - aSr(1, i) + 1
+            nTot = nTot + nLen
+            If bSame Then
+                If nIns &gt; aSr(1, i) And nIns &lt;= aSr(3, i) Then GoTo InsideSource
+                If nIns &gt; aSr(3, i) Then nAbove = nAbove + nLen   &apos; emptied rows above the destination
+            End If
+        Next i
+        oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.rows&quot;)) : bUndo = True
+
+        oDstSheet.Rows.insertByIndex(nIns, nTot)
+        nOff = 0
+        For i = 0 To nB - 1
+            nLen = aSr(3, i) - aSr(1, i) + 1
+            nSt = aSr(1, i) : nEn = aSr(3, i)
+            If bSame And nIns &lt;= nSt Then               &apos; this range moved down with the insertion
+                nSt = nSt + nTot : nEn = nEn + nTot
+            End If
+            oS.StartColumn = 0 : oS.EndColumn = oSrcSheet.Columns.Count - 1
+            oS.StartRow = nSt  : oS.EndRow = nEn
+            oD.Sheet = oT.Sheet : oD.Column = 0 : oD.Row = nIns + nOff
+            If bCutMode Then
+                oSrcSheet.moveRange(oD, oS)                    &apos; references follow the moved cells
+            Else
+                oSrcSheet.copyRange(oD, oS)
+            End If
+            nOff = nOff + nLen
+        Next i
+        If bRemove Then                                        &apos; cut: remove the emptied rows, last first
+            For i = nB - 1 To 0 Step -1
+                nLen = aSr(3, i) - aSr(1, i) + 1
+                nSt = aSr(1, i)
+                If bSame And nIns &lt;= nSt Then nSt = nSt + nTot
+                oSrcSheet.Rows.removeByIndex(nSt, nLen)
+            Next i
+        End If
+
+        &apos; final position: shifts up by the removed rows that were above the destination
+        nR1 = nIns
+        If bRemove And bSame Then nR1 = nIns - nAbove
+        nR2 = nR1 + nTot - 1
+        nC1 = 0 : nC2 = oDstSheet.Columns.Count - 1
+
+    &apos;---------------------------------------------------------------- COLS
+    Case &quot;COLS&quot;
+        If bBeforeMode Then nIns = oT.StartColumn Else nIns = oT.EndColumn + 1
+        nTot = 0 : nAbove = 0
+        For i = 0 To nB - 1
+            nLen = aSr(2, i) - aSr(0, i) + 1
+            nTot = nTot + nLen
+            If bSame Then
+                If nIns &gt; aSr(0, i) And nIns &lt;= aSr(2, i) Then GoTo InsideSource
+                If nIns &gt; aSr(2, i) Then nAbove = nAbove + nLen   &apos; emptied columns left of the destination
+            End If
+        Next i
+        oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.columns&quot;)) : bUndo = True
+
+        oDstSheet.Columns.insertByIndex(nIns, nTot)
+        nOff = 0
+        For i = 0 To nB - 1
+            nLen = aSr(2, i) - aSr(0, i) + 1
+            nSt = aSr(0, i) : nEn = aSr(2, i)
+            If bSame And nIns &lt;= nSt Then
+                nSt = nSt + nTot : nEn = nEn + nTot
+            End If
+            oS.StartRow = 0     : oS.EndRow = oSrcSheet.Rows.Count - 1
+            oS.StartColumn = nSt : oS.EndColumn = nEn
+            oD.Sheet = oT.Sheet : oD.Column = nIns + nOff : oD.Row = 0
+            If bCutMode Then
+                oSrcSheet.moveRange(oD, oS)
+            Else
+                oSrcSheet.copyRange(oD, oS)
+            End If
+            nOff = nOff + nLen
+        Next i
+        If bRemove Then
+            For i = nB - 1 To 0 Step -1
+                nLen = aSr(2, i) - aSr(0, i) + 1
+                nSt = aSr(0, i)
+                If bSame And nIns &lt;= nSt Then nSt = nSt + nTot
+                oSrcSheet.Columns.removeByIndex(nSt, nLen)
+            Next i
+        End If
+
+        nC1 = nIns
+        If bRemove And bSame Then nC1 = nIns - nAbove
+        nC2 = nC1 + nTot - 1
+        nR1 = 0 : nR2 = oDstSheet.Rows.Count - 1
+
+    &apos;---------------------------------------------------------------- CELLS
+    Case &quot;CELLS&quot;
+        If Not bShiftRight Then
+            &apos;----- below / above: existing cells shift down -----
+            nCol = oT.StartColumn
+            If bBeforeMode Then nRow = oT.StartRow Else nRow = oT.EndRow + 1
+            oIns.Sheet = oT.Sheet
+            oIns.StartColumn = nCol : oIns.EndColumn = nCol + nW - 1
+            oIns.StartRow = nRow : oIns.EndRow = nRow + nH - 1
+            bOverlap = bSame And (nCol &lt;= oS.EndColumn) And (nCol + nW - 1 &gt;= oS.StartColumn)
+            If bOverlap And nRow &gt; oS.StartRow And nRow &lt;= oS.EndRow Then GoTo InsideSource
+            oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.cells&quot;)) : bUndo = True
+
+            oDstSheet.insertCells(oIns, com.sun.star.sheet.CellInsertMode.DOWN)
+            If bOverlap And nRow &lt;= oS.StartRow Then
+                oS.StartRow = oS.StartRow + nH : oS.EndRow = oS.EndRow + nH
+            End If
+            oD.Sheet = oT.Sheet : oD.Column = nCol : oD.Row = nRow
+            If bCutMode Then
+                oSrcSheet.moveRange(oD, oS)
+                If bRemove Then oSrcSheet.removeRange(oS, com.sun.star.sheet.CellDeleteMode.UP)
+            Else
+                oSrcSheet.copyRange(oD, oS)
+            End If
+
+            nR1 = nRow
+            If bRemove And bOverlap And nRow &gt; oS.EndRow Then nR1 = nRow - nH
+            nR2 = nR1 + nH - 1
+            nC1 = nCol : nC2 = nCol + nW - 1
+        Else
+            &apos;----- right / left: existing cells shift right -----
+            If bBeforeMode Then nCol = oT.StartColumn Else nCol = oT.EndColumn + 1
+            nRow = oT.StartRow
+            oIns.Sheet = oT.Sheet
+            oIns.StartColumn = nCol : oIns.EndColumn = nCol + nW - 1
+            oIns.StartRow = nRow : oIns.EndRow = nRow + nH - 1
+            bOverlap = bSame And (nRow &lt;= oS.EndRow) And (nRow + nH - 1 &gt;= oS.StartRow)
+            If bOverlap And nCol &gt; oS.StartColumn And nCol &lt;= oS.EndColumn Then GoTo InsideSource
+            oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.cells&quot;)) : bUndo = True
+
+            oDstSheet.insertCells(oIns, com.sun.star.sheet.CellInsertMode.RIGHT)
+            If bOverlap And nCol &lt;= oS.StartColumn Then
+                oS.StartColumn = oS.StartColumn + nW : oS.EndColumn = oS.EndColumn + nW
+            End If
+            oD.Sheet = oT.Sheet : oD.Column = nCol : oD.Row = nRow
+            If bCutMode Then
+                oSrcSheet.moveRange(oD, oS)
+                If bRemove Then oSrcSheet.removeRange(oS, com.sun.star.sheet.CellDeleteMode.LEFT)
+            Else
+                oSrcSheet.copyRange(oD, oS)
+            End If
+
+            nC1 = nCol
+            If bRemove And bOverlap And nCol &gt; oS.EndColumn Then nC1 = nCol - nW
+            nC2 = nC1 + nW - 1
+            nR1 = nRow : nR2 = nRow + nH - 1
+        End If
+    End Select
+
+    oDoc.UndoManager.leaveUndoContext()
+    bUndo = False
+
+    &apos; --- remember the ORIGINAL source so an Undo can select it again ---
+    On Error Resume Next
+    SetDocProp oDoc, UNDO_NAME, oSrcAddr.Sheet &amp; &quot;|&quot; &amp; RangesToString(aSrcRanges)
+    On Error GoTo 0
+
+    &apos; --- select the pasted data (on its own sheet) ---
+    On Error Resume Next
+    oDoc.CurrentController.setActiveSheet(oDstSheet)
+    oDoc.CurrentController.select(oDstSheet.getCellRangeByPosition(nC1, nR1, nC2, nR2))
+    On Error GoTo 0
+    Exit Sub
+
+InsideSource:
+    MsgBox Txt(&quot;msg.inside&quot;), 48
+    Exit Sub
+
+ErrHandler:
+    sErr = Error$ : nLine = Erl
+    If bUndo Then oDoc.UndoManager.leaveUndoContext()
+    MsgBox Txt(&quot;err.general&quot;) &amp; nLine &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+End Sub
+
+
+&apos;=====================================================================
+&apos;  7. Paste Special: copy to the clipboard, make room, open the dialog
+&apos;     The destination arrives as plain numbers (tSheet, tC1, tR1, tC2, tR2)
+&apos;=====================================================================
+&apos; Lets LibreOffice handle its pending events (such as the news that the clipboard changed)
+Sub LetOfficeCatchUp(nMs As Long)
+    On Error Resume Next
+    createUnoService(&quot;com.sun.star.awt.Toolkit&quot;).processEventsToIdle()
+    On Error GoTo 0
+    Wait nMs
+End Sub
+
+&apos; Opens the Paste Special dialog. The call normally returns only when the dialog is closed.
+&apos; If it comes back at once, LibreOffice ignored it: in the first use of a session it may not
+&apos; have noticed yet that the clipboard holds something. So let it catch up and try again.
+Function OpenPasteSpecial(oFrame As Object, oDisp As Object) As Boolean
+    Dim nTry As Long, t0 As Double, t1 As Double
+    OpenPasteSpecial = False
+    For nTry = 1 To 6
+        t0 = Timer
+        oDisp.executeDispatch(oFrame, &quot;.uno:PasteSpecial&quot;, &quot;&quot;, 0, Array())
+        t1 = Timer
+        If t1 &lt; t0 Or t1 - t0 &gt; 0.5 Then
+            OpenPasteSpecial = True
+            Exit Function
+        End If
+        LetOfficeCatchUp 250
+    Next nTry
+End Function
+
+Sub PerformPasteSpecial(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As Long)
+    Dim oDoc As Object, oCtrl As Object, oFrame As Object, oDisp As Object
+    Dim oSrcSheet As Object, oDstSheet As Object
+    Dim oT As New com.sun.star.table.CellRangeAddress
+    Dim oIns As New com.sun.star.table.CellRangeAddress
+    Dim nIns As Long, nW As Long, nH As Long, nCol As Long, nRow As Long
+    Dim nR1 As Long, nR2 As Long, nC1 As Long, nC2 As Long
+    Dim sKind As String, bSame As Boolean, bOverlap As Boolean, bUndo As Boolean
+    Dim sErr As String, nLine As Long
+    Dim nTot As Long, i As Long
+    &apos; source ranges as they sit AFTER the insertion (they move if the space is made above /
+    &apos; left of them): aP(field, index)
+    Dim aP As Variant
+
+    On Error GoTo ErrHandler
+
+    oT.Sheet = tSheet
+    oT.StartColumn = tC1 : oT.StartRow = tR1
+    oT.EndColumn = tC2 : oT.EndRow = tR2
+
+    oDoc = oSrcDoc
+    oCtrl = oDoc.CurrentController
+    oFrame = oCtrl.Frame
+    oSrcSheet = oDoc.Sheets.getByIndex(oSrcAddr.Sheet)
+    oDstSheet = oDoc.Sheets.getByIndex(oT.Sheet)
+    bSame = (oSrcAddr.Sheet = oT.Sheet)
+    nW = oSrcAddr.EndColumn - oSrcAddr.StartColumn + 1      &apos; cells: the one range
+    nH = oSrcAddr.EndRow - oSrcAddr.StartRow + 1
+    aP = CopyRanges(aSrcRanges)
+
+    &apos; forget leftovers from an earlier paste special
+    DelDocProp oDoc, PSSRC_NAME
+
+    &apos; --- 1. copy the source to the real clipboard (all its ranges, for a Ctrl selection) ---
+    oCtrl.setActiveSheet(oSrcSheet)
+    oCtrl.select(BuildSelection(oDoc, oSrcAddr.Sheet, aSrcRanges))
+    oDisp = createUnoService(&quot;com.sun.star.frame.DispatchHelper&quot;)
+    oDisp.executeDispatch(oFrame, &quot;.uno:Copy&quot;, &quot;&quot;, 0, Array())
+    LetOfficeCatchUp 100
+
+    &apos; --- 2. make room at the destination (one Undo step with our title) ---
+    Select Case sSrcMode
+    Case &quot;ROWS&quot;
+        sKind = &quot;rows&quot;
+        If bBeforeMode Then nIns = oT.StartRow Else nIns = oT.EndRow + 1
+        nTot = TotalSize(aSrcRanges, 1)
+        oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.&quot; &amp; sKind)) : bUndo = True
+        oDstSheet.Rows.insertByIndex(nIns, nTot)
+        If bSame Then
+            For i = 0 To UBound(aP, 2)
+                If nIns &lt;= aSrcRanges(1, i) Then
+                    aP(1, i) = aP(1, i) + nTot : aP(3, i) = aP(3, i) + nTot
+                End If
+            Next i
+        End If
+        nC1 = 0 : nC2 = oDstSheet.Columns.Count - 1
+        nR1 = nIns : nR2 = nIns + nTot - 1
+
+    Case &quot;COLS&quot;
+        sKind = &quot;columns&quot;
+        If bBeforeMode Then nIns = oT.StartColumn Else nIns = oT.EndColumn + 1
+        nTot = TotalSize(aSrcRanges, 0)
+        oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.&quot; &amp; sKind)) : bUndo = True
+        oDstSheet.Columns.insertByIndex(nIns, nTot)
+        If bSame Then
+            For i = 0 To UBound(aP, 2)
+                If nIns &lt;= aSrcRanges(0, i) Then
+                    aP(0, i) = aP(0, i) + nTot : aP(2, i) = aP(2, i) + nTot
+                End If
+            Next i
+        End If
+        nC1 = nIns : nC2 = nIns + nTot - 1
+        nR1 = 0 : nR2 = oDstSheet.Rows.Count - 1
+
+    Case &quot;CELLS&quot;
+        sKind = &quot;cells&quot;
+        oIns.Sheet = oT.Sheet
+        If Not bShiftRight Then
+            nCol = oT.StartColumn
+            If bBeforeMode Then nRow = oT.StartRow Else nRow = oT.EndRow + 1
+        Else
+            If bBeforeMode Then nCol = oT.StartColumn Else nCol = oT.EndColumn + 1
+            nRow = oT.StartRow
+        End If
+        oIns.StartColumn = nCol : oIns.EndColumn = nCol + nW - 1
+        oIns.StartRow = nRow : oIns.EndRow = nRow + nH - 1
+        oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.&quot; &amp; sKind)) : bUndo = True
+        If Not bShiftRight Then
+            oDstSheet.insertCells(oIns, com.sun.star.sheet.CellInsertMode.DOWN)
+            bOverlap = bSame And (nCol &lt;= oSrcAddr.EndColumn) And (nCol + nW - 1 &gt;= oSrcAddr.StartColumn)
+            If bOverlap And nRow &lt;= oSrcAddr.StartRow Then
+                aP(1, 0) = aP(1, 0) + nH : aP(3, 0) = aP(3, 0) + nH
+            End If
+        Else
+            oDstSheet.insertCells(oIns, com.sun.star.sheet.CellInsertMode.RIGHT)
+            bOverlap = bSame And (nRow &lt;= oSrcAddr.EndRow) And (nRow + nH - 1 &gt;= oSrcAddr.StartRow)
+            If bOverlap And nCol &lt;= oSrcAddr.StartColumn Then
+                aP(0, 0) = aP(0, 0) + nW : aP(2, 0) = aP(2, 0) + nW
+            End If
+        End If
+        nC1 = nCol : nC2 = nCol + nW - 1
+        nR1 = nRow : nR2 = nRow + nH - 1
+    End Select
+
+    oDoc.UndoManager.leaveUndoContext()
+    bUndo = False
+
+    &apos; --- remember the source for the two Undo steps (insertion, then paste) ---
+    On Error Resume Next
+    SetDocProp oDoc, UNDO_NAME, oSrcAddr.Sheet &amp; &quot;|&quot; &amp; RangesToString(aSrcRanges)
+    SetDocProp oDoc, PSSRC_NAME, oSrcAddr.Sheet &amp; &quot;|&quot; &amp; RangesToString(aP)
+    On Error GoTo ErrHandler
+
+    &apos; --- 3. select the empty space and open Paste Special ---
+    oCtrl.setActiveSheet(oDstSheet)
+    oCtrl.select(oDstSheet.getCellRangeByPosition(nC1, nR1, nC2, nR2))
+    If Not OpenPasteSpecial(oFrame, oDisp) Then MsgBox Txt(&quot;msg.pastefail&quot;), 48
+    Exit Sub
+
+ErrHandler:
+    sErr = Error$ : nLine = Erl
+    If bUndo Then oDoc.UndoManager.leaveUndoContext()
+    MsgBox Txt(&quot;err.general&quot;) &amp; nLine &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+End Sub
+</script:module>
