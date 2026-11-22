@@ -6,7 +6,12 @@ choisissez l'action puis cliquez sur la destination.
 
 Plusieurs lignes (ou colonnes) sélectionnées avec Ctrl sont insérées ensemble, dans l'ordre de la feuille.
 
+Feuilles : faites un clic droit sur un onglet (ou sélectionnez d'abord plusieurs onglets),
+choisissez Copier les feuilles et insérer > Avant/Après puis cliquez l'onglet de la feuille de destination.
+Les feuilles sont copiées en bloc et les références entre elles suivent les règles normales de collage de Calc.
+Les feuilles sélectionnées doivent être consécutives (Maj+clic sur les onglets) et les copies doivent être insérées en dehors de la plage des feuilles sélectionnées : avant la première ou après la dernière.
+
 Les lignes vont au-dessus ou en dessous, les colonnes à gauche ou à droite,
 les cellules dans les quatre directions.
-Couper et déplacer conservent les formules, Annuler resélectionne la source,
+Couper et déplacer conservent les formules, Déplacer vide les cellules sources mais conserve leur mise en forme, Annuler resélectionne la source,
 et les menus suivent la langue de l'interface (français ou anglais pour le moment).

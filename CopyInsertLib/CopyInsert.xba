@@ -11,7 +11,7 @@
 &apos;  Calc spreadsheets. They are available after selecting the source data
 &apos;  (row(s), column(s) or cell(s)) and clicking the mouse right button.
 &apos;  Move works like cut, but the source rows / columns / cells are kept and
-&apos;  only their content is cleared.
+&apos;  only their content is cleared: their formatting stays as it was.
 &apos;
 &apos;  SEVERAL ROWS OR COLUMNS (Ctrl SELECTION)
 &apos;  Rows (or columns) selected with the Ctrl key, even if they are not next to each
@@ -20,6 +20,30 @@
 &apos;  &quot;copy above&quot; is chosen on row 7: row 2 is copied to the new row 7, row 10 to the new
 &apos;  row 8, and the old row 7 becomes row 9. The same for columns, and for copy, paste
 &apos;  special, cut and move. Cells still take one range only.
+&apos;
+&apos;  SHEETS
+&apos;  Right-click a sheet tab (or select several tabs with Ctrl or Shift first): &quot;Copy
+&apos;  sheets and insert&quot; &gt; Before / After, then click the tab of the destination sheet (one
+&apos;  click). The sheet that is already displayed has no tab change to detect: for it click
+&apos;  any of its cells instead.
+&apos;  The selected sheets are copied as one block, in sheet order, and inserted before
+&apos;  (after) the destination sheet. The sheets are copied like cells are: each copy keeps
+&apos;  its sheet properties (tab color, column widths, page style ...), then its cells are
+&apos;  pasted from the source. A reference between two sheets of the block that is
+&apos;  relative (no &quot;$&quot; before the sheet name) therefore points to the copy of that sheet.
+&apos;  A reference to a sheet outside the block stays relative as well, as with any paste:
+&apos;  it points to whatever sheet lies at the same distance from the copy (or gives
+&apos;  #REF!). An absolute reference ($Sheet1.A1) is never changed. Add the &quot;$&quot; yourself if
+&apos;  a reference must stay on a given sheet. One Undo step; afterwards only the first new
+&apos;  sheet is selected (and after an Undo only the first source sheet), with the same
+&apos;  cells / rows / columns highlighted as before the copy (a single cell only gets the
+&apos;  cursor, it is not highlighted).
+&apos;  The selected sheets must be consecutive (Shift+click on the tabs): a selection with
+&apos;  gaps is refused with a message, because the relative references between the sheets
+&apos;  would not follow the copies. The copies must go OUTSIDE the range of the selected
+&apos;  sheets: before the first one or after the last one. A destination inside that range
+&apos;  is refused with a message, because the references between the sheets of the block
+&apos;  would be broken.
 &apos;
 &apos;  OPTIONS
 &apos;  1) Right-click menus for cells, rows and columns, each with copy, paste
@@ -33,6 +57,9 @@
 &apos;  5) One Undo step per plain copy, cut or move. Paste special takes two
 &apos;     (the insertion, then the paste). After each Undo the source is selected.
 &apos;  6) Works for Calc spreadsheets only.
+&apos;  6b) The Edit menu offers the sheet copy (Copy and insert &gt; Before / After, shown in
+&apos;     the Above / Below slots) only while several sheet tabs are selected; with one
+&apos;     sheet use the sheet tab menu.
 &apos;  7) Automatic setup: the extension runs EnableMenu from a job triggered by the
 &apos;     &quot;View Created&quot; event (nothing appears in Tools &gt; Customize &gt; Events) and
 &apos;     registers the keyboard shortcuts below, so nothing has to be assigned
@@ -107,7 +134,16 @@
 &apos;     a multiple selection of complete rows (columns) one after the other.
 &apos;
 &apos;  HOW IT WORKS
-&apos;   - A context menu interceptor adds the entries (CMI_ functions).
+&apos;   - A context menu interceptor adds the entries (CMI_ functions). The sheet tab menu is
+&apos;     recognized by its Rename Sheet entry and gets &quot;Copy sheets and insert&quot; after
+&apos;     Move or Copy Sheet (AddSheetEntries).
+&apos;   - Sheets: ArmSheetCopy saves the state &quot;SHEETS|0|before|0|0|firstSheet|1,2,5&quot; (the
+&apos;     selected sheet indexes), opens the same destination window and also listens to
+&apos;     the sheet changes (AS_activeSpreadsheetChanged): a click on a sheet tab closes
+&apos;     the window and gives the destination at once, while a click on a cell still ends
+&apos;     in RS_done. Both then call PerformSheetCopy: copyByName for every sheet (all the copies exist first), then
+&apos;     copyRange of each source used area onto its copy, which gives the usual paste
+&apos;     behavior to the references between sheets. Undo: one step, first source sheet selected.
 &apos;   - The Edit menu entries come from registry/Addons.xcu (merged after Paste
 &apos;     Special, Calc only). A Python protocol handler (python/CopyInsertEditMenu.py)
 &apos;     answers LibreOffice&apos;s status request each time Edit opens: it enables only
@@ -195,6 +231,7 @@ Const EXT_ID = &quot;org.libreoffice.extension.copyinsert&quot;
 Private oInterceptor As Object
 Private oUndoListener As Object
 Private oSelListener As Object
+Private oActListener As Object            &apos; sheets: tells which sheet tab was clicked
 Private oSrcDoc As Object
 Private oSrcAddr As Variant      &apos; first source range (the only one for cells)
 Private aSrcRanges As Variant    &apos; all source ranges: aR(field, index), see ReadSelection
@@ -651,7 +688,7 @@ Function IsOurLabel(sTxt As String) As Boolean
     IsOurLabel = False
     If Len(sTxt) = 0 Then Exit Function
     InitRes
-    aKinds = Array(&quot;cells&quot;, &quot;rows&quot;, &quot;columns&quot;)
+    aKinds = Array(&quot;cells&quot;, &quot;rows&quot;, &quot;columns&quot;, &quot;sheets&quot;)
     aActs = Array(&quot;copy&quot;, &quot;paste&quot;, &quot;cut&quot;, &quot;move&quot;)
     For j = 0 To UBound(aKinds)
         For k = 0 To UBound(aActs)
@@ -685,6 +722,134 @@ Function MenuHasOurEntries(oMenu As Object) As Boolean
     Next i
 End Function
 
+&apos; True if the menu is the one of the sheet tabs (it has Rename Sheet)
+Function IsSheetTabMenu(oMenu As Object) As Boolean
+    Dim i As Long, oItem As Object, sCmd As String
+    IsSheetTabMenu = False
+    On Error Resume Next
+    For i = 0 To oMenu.Count - 1
+        oItem = oMenu.getByIndex(i)
+        sCmd = &quot;&quot;
+        sCmd = oItem.getPropertyValue(&quot;CommandURL&quot;)
+        If sCmd = &quot;.uno:RenameTable&quot; Then
+            IsSheetTabMenu = True
+            Exit For
+        End If
+    Next i
+End Function
+
+&apos; The sheets of the selection (sheet tabs selected with Ctrl or Shift give a selection
+&apos; over several sheets), as a Long array in sheet order. Empty if there is none.
+Function ReadSheetSelection(oSel As Variant) As Variant
+    Dim aAddr As Variant, aOut() As Long, i As Long, j As Long, n As Long
+    Dim bKnown As Boolean, nTmp As Long
+
+    ReadSheetSelection = Empty
+    On Error GoTo SelFail
+    If IsNull(oSel) Or IsEmpty(oSel) Then Exit Function
+    If HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XCellRangeAddressable&quot;) Then
+        ReDim aOut(0)
+        aOut(0) = oSel.RangeAddress.Sheet
+        ReadSheetSelection = aOut
+        Exit Function
+    End If
+    If Not HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XSheetCellRanges&quot;) Then Exit Function
+    aAddr = oSel.getRangeAddresses()
+    If UBound(aAddr) &lt; 0 Then Exit Function
+    ReDim aOut(UBound(aAddr))
+    n = 0
+    For i = 0 To UBound(aAddr)
+        bKnown = False
+        For j = 0 To n - 1
+            If aOut(j) = aAddr(i).Sheet Then bKnown = True
+        Next j
+        If Not bKnown Then
+            aOut(n) = aAddr(i).Sheet
+            n = n + 1
+        End If
+    Next i
+    ReDim Preserve aOut(n - 1)
+    For i = 0 To n - 2                       &apos; sheet order
+        For j = i + 1 To n - 1
+            If aOut(j) &lt; aOut(i) Then
+                nTmp = aOut(i) : aOut(i) = aOut(j) : aOut(j) = nTmp
+            End If
+        Next j
+    Next i
+    ReadSheetSelection = aOut
+    Exit Function
+
+SelFail:
+    ReadSheetSelection = Empty
+End Function
+
+&apos; The highlighted ranges of the selection that lie on sheet nSheet, as &quot;c1,r1,c2,r2;...&quot; (a
+&apos; row, a column or cells). If none lies on that sheet, the first range whatever its sheet.
+&apos; &quot;&quot; if the selection cannot be read.
+Function SelectedRangesOnSheet(oSel As Variant, nSheet As Long) As String
+    Dim aAddr As Variant, i As Long, sOut As String
+
+    SelectedRangesOnSheet = &quot;&quot;
+    On Error GoTo RangesFail
+    If HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XCellRangeAddressable&quot;) Then
+        aAddr = Array(oSel.RangeAddress)
+    ElseIf HasUnoInterfaces(oSel, &quot;com.sun.star.sheet.XSheetCellRanges&quot;) Then
+        aAddr = oSel.getRangeAddresses()
+    Else
+        Exit Function
+    End If
+    If UBound(aAddr) &lt; 0 Then Exit Function
+    sOut = &quot;&quot;
+    For i = 0 To UBound(aAddr)
+        If aAddr(i).Sheet = nSheet Then
+            If sOut &lt;&gt; &quot;&quot; Then sOut = sOut &amp; &quot;;&quot;
+            sOut = sOut &amp; aAddr(i).StartColumn &amp; &quot;,&quot; &amp; aAddr(i).StartRow &amp; &quot;,&quot; &amp; _
+                   aAddr(i).EndColumn &amp; &quot;,&quot; &amp; aAddr(i).EndRow
+        End If
+    Next i
+    If sOut = &quot;&quot; Then
+        sOut = aAddr(0).StartColumn &amp; &quot;,&quot; &amp; aAddr(0).StartRow &amp; &quot;,&quot; &amp; _
+               aAddr(0).EndColumn &amp; &quot;,&quot; &amp; aAddr(0).EndRow
+    End If
+    SelectedRangesOnSheet = sOut
+    Exit Function
+
+RangesFail:
+    SelectedRangesOnSheet = &quot;&quot;
+End Function
+
+&apos; Adds &quot;Copy sheets and insert&quot; (before / after) to the sheet tab menu, after Move or Copy
+&apos; Sheet. Returns False (nothing added) when the selected sheets cannot be read.
+Function AddSheetEntries(oMenu As Object, oSel As Variant) As Boolean
+    Dim i As Long, nPos As Long, oItem As Object, sCmd As String, sCopy As String
+
+    AddSheetEntries = False
+    If IsEmpty(ReadSheetSelection(oSel)) Then Exit Function
+
+    nPos = oMenu.Count
+    On Error Resume Next
+    For i = 0 To oMenu.Count - 1
+        oItem = oMenu.getByIndex(i)
+        sCmd = &quot;&quot;
+        sCmd = oItem.getPropertyValue(&quot;CommandURL&quot;)
+        If sCmd = &quot;.uno:Move&quot; Then
+            nPos = i + 1
+            Exit For
+        End If
+    Next i
+    On Error GoTo 0
+
+    sCopy = Txt(&quot;m.copy.sheets&quot;)
+    If USE_SUBMENUS Then
+        AddBeforeAfterSubmenu oMenu, nPos, sCopy, Txt(&quot;dir.before&quot;), Txt(&quot;dir.after&quot;), _
+                              &quot;StartCopySheetsBefore&quot;, &quot;StartCopySheets&quot;
+    Else
+        AddMenuItem oMenu, nPos, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.before&quot;) &amp; &quot;...&quot;, &quot;StartCopySheetsBefore&quot;
+        AddMenuItem oMenu, nPos + 1, sCopy &amp; &quot; &quot; &amp; Txt(&quot;low.after&quot;) &amp; &quot;...&quot;, &quot;StartCopySheets&quot;
+    End If
+    AddSheetEntries = True
+End Function
+
 Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
     Dim oMenu As Object, oItem As Object
     Dim oSelSupp As Object, oSel As Variant, aRaw As Variant, nSheet As Long
@@ -701,11 +866,21 @@ Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
     If IsNull(oSelSupp) Or IsEmpty(oSelSupp) Then Exit Function
     oSel = oSelSupp.getSelection()
     If IsNull(oSel) Or IsEmpty(oSel) Then Exit Function
-    aRaw = ReadSelection(oSel, nSheet)       &apos; one range, or the ranges of a Ctrl selection
-    If IsEmpty(aRaw) Then Exit Function
 
     oMenu = oEvent.ActionTriggerContainer
     If IsNull(oMenu) Or IsEmpty(oMenu) Then Exit Function
+
+    &apos; the menu of the sheet tabs: copy sheets and insert
+    If IsSheetTabMenu(oMenu) Then
+        If MenuHasOurEntries(oMenu) Then Exit Function
+        If AddSheetEntries(oMenu, oSel) Then
+            CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.CONTINUE_MODIFIED
+        End If
+        Exit Function
+    End If
+
+    aRaw = ReadSelection(oSel, nSheet)       &apos; one range, or the ranges of a Ctrl selection
+    If IsEmpty(aRaw) Then Exit Function
 
     &apos; already added by another registered interceptor?
     If MenuHasOurEntries(oMenu) Then Exit Function
@@ -891,6 +1066,20 @@ Sub UM_actionUndone(oEvent As Object)
     End If
     If sInfo = &quot;&quot; Then Exit Sub
 
+    If Left(sInfo, 2) = &quot;S|&quot; Then
+        &apos; sheets: select the first source sheet again (that sheet only)
+        Dim sRest As String, nAt As Long, sRg As String
+        sRest = Mid(sInfo, 3)
+        nAt = InStr(sRest, &quot;@&quot;)
+        sRg = &quot;&quot;
+        If nAt &gt; 0 Then
+            sRg = Mid(sRest, nAt + 1)
+            sRest = Left(sRest, nAt - 1)
+        End If
+        SelectFirstSheet oDoc, CLng(Split(sRest, &quot;,&quot;)(0)), sRg
+        Exit Sub
+    End If
+
     a = Split(sInfo, &quot;|&quot;)
     oCtrl = oDoc.CurrentController
     oSheet = oDoc.Sheets.getByIndex(CLng(a(0)))
@@ -978,6 +1167,15 @@ Sub StartMoveBefore()
     ArmPendingEx True, True, True, False, Not CELLS_SHIFT_DOWN
 End Sub
 
+&apos; --- sheets: copy the selected sheets before / after the destination sheet ---
+Sub StartCopySheets()
+    ArmSheetCopy False
+End Sub
+
+Sub StartCopySheetsBefore()
+    ArmSheetCopy True
+End Sub
+
 &apos; --- cells: explicit direction ---
 Sub StartCopyBelow()
     ArmPending False, False, False, False
@@ -1046,6 +1244,11 @@ End Sub
 &apos; Wording of the prompt window (kept short: the window is narrow)
 Function BuildTitle(sMode As String, bBefore As Boolean, bSpecial As Boolean, bRight As Boolean) As String
     Dim sWhere As String, sPrefix As String
+    If sMode = &quot;SHEETS&quot; Then
+        If bBefore Then sWhere = Txt(&quot;t.before&quot;) Else sWhere = Txt(&quot;t.after&quot;)
+        BuildTitle = Txt(&quot;t.insert&quot;) &amp; sWhere &amp; Txt(&quot;t.clicksheet&quot;)
+        Exit Function
+    End If
     If sMode = &quot;CELLS&quot; Then
         If bRight Then
             If bBefore Then sWhere = Txt(&quot;t.left&quot;) Else sWhere = Txt(&quot;t.right&quot;)
@@ -1132,6 +1335,47 @@ Sub ArmPendingEx(bCut As Boolean, bMove As Boolean, bBefore As Boolean, bSpecial
     oCtrl.addRangeSelectionListener(oSelListener)
 
     StartDestinationPick oCtrl, BuildTitle(sMode, bBefore, bSpecial, bRight)
+End Sub
+
+&apos; Sheets: remember the selected sheets (indexes) and open the destination window. The
+&apos; destination is any cell of the sheet before (after) which the copies must go.
+Sub ArmSheetCopy(bBefore As Boolean)
+    Dim oDoc As Object, oCtrl As Object, aSh As Variant, sList As String, i As Long
+    Dim sBefore As String, sRg As String
+
+    If Not IsCalcDoc(ThisComponent) Then Exit Sub
+    oDoc = ThisComponent
+    oCtrl = oDoc.CurrentController
+    aSh = ReadSheetSelection(oCtrl.Selection)
+    If IsEmpty(aSh) Then
+        MsgBox Txt(&quot;msg.nosheets&quot;), 48
+        Exit Sub
+    End If
+    For i = 1 To UBound(aSh)                 &apos; the sheets must be consecutive
+        If aSh(i) &lt;&gt; aSh(0) + i Then
+            MsgBox Txt(&quot;msg.sheetgap&quot;), 48
+            Exit Sub
+        End If
+    Next i
+    sList = &quot;&quot;
+    For i = 0 To UBound(aSh)
+        If i &gt; 0 Then sList = sList &amp; &quot;,&quot;
+        sList = sList &amp; aSh(i)
+    Next i
+    &apos; what is highlighted now, to be highlighted again on the first copy (or after an Undo)
+    sRg = SelectedRangesOnSheet(oCtrl.Selection, aSh(0))
+    If sRg &lt;&gt; &quot;&quot; Then sList = sList &amp; &quot;@&quot; &amp; sRg
+    If bBefore Then sBefore = &quot;1&quot; Else sBefore = &quot;0&quot;
+
+    SaveState oDoc, &quot;SHEETS|0|&quot; &amp; sBefore &amp; &quot;|0|0|&quot; &amp; aSh(0) &amp; &quot;|&quot; &amp; sList
+
+    oSelListener = CreateUnoListener(&quot;RS_&quot;, &quot;com.sun.star.sheet.XRangeSelectionListener&quot;)
+    oCtrl.addRangeSelectionListener(oSelListener)
+    &apos; a click on a sheet tab changes the active sheet: that sheet is the destination
+    oActListener = CreateUnoListener(&quot;AS_&quot;, &quot;com.sun.star.sheet.XActivationEventListener&quot;)
+    oCtrl.addActivationEventListener(oActListener)
+
+    StartDestinationPick oCtrl, BuildTitle(&quot;SHEETS&quot;, bBefore, False, False)
 End Sub
 
 Sub CancelPending()
@@ -1240,6 +1484,13 @@ Sub RS_done(oEvent As Object)
     sStep = Txt(&quot;step.prepare&quot;)
     ClearState oDoc
 
+    &apos; --- copy sheets: the destination is the sheet of the click ---
+    If a(0) = &quot;SHEETS&quot; Then
+        sStep = Txt(&quot;step.run&quot;)
+        PerformSheetCopy a(6), (a(2) = &quot;1&quot;), CLng(vT(0))
+        Exit Sub
+    End If
+
     &apos; --- rebuild the source description ---
     sSrcMode = a(0)
     bCutMode = (a(1) = &quot;1&quot; Or a(1) = &quot;2&quot;)     &apos; cut and move both relocate the content
@@ -1271,6 +1522,36 @@ Sub RS_aborted(oEvent As Object)
     ClearState ThisComponent
 End Sub
 
+&apos; Sheets: the active sheet changed. While a sheet copy waits for its destination, this is a
+&apos; click on a sheet tab: that sheet is the destination. (The listener stays registered, so
+&apos; with no sheet copy pending it does nothing.)
+Sub AS_activeSpreadsheetChanged(oEvent As Object)
+    Dim oDoc As Object, sState As String, a() As String, nDest As Long
+    Dim sErr As String, nLine As Long
+    On Error GoTo Oops
+
+    oDoc = ThisComponent
+    If Not IsCalcDoc(oDoc) Then Exit Sub
+    sState = LoadState(oDoc)
+    If Left(sState, 7) &lt;&gt; &quot;SHEETS|&quot; Then Exit Sub      &apos; no sheet copy waiting
+    a = Split(sState, &quot;|&quot;)
+    nDest = oEvent.ActiveSheet.RangeAddress.Sheet
+
+    ClearState oDoc                                     &apos; handled: nothing pending any more
+    On Error Resume Next
+    oDoc.CurrentController.abortRangeSelection()        &apos; closes the destination window
+    On Error GoTo Oops
+    PerformSheetCopy a(6), (a(2) = &quot;1&quot;), nDest
+    Exit Sub
+
+Oops:
+    sErr = Error$ : nLine = Erl
+    MsgBox Txt(&quot;err.range&quot;) &amp; nLine &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+End Sub
+
+Sub AS_disposing(oEvent As Object)
+End Sub
+
 Sub RS_disposing(oEvent As Object)
 End Sub
 
@@ -1281,6 +1562,27 @@ End Sub
 &apos;     Move leaves them in place (empty).
 &apos;     The destination arrives as plain numbers (tSheet, tC1, tR1, tC2, tR2)
 &apos;=====================================================================
+&apos; Move: moveRange carries the formatting away with the data and leaves the emptied source
+&apos; unformatted. A move must only empty the source cells, so right after moveRange the
+&apos; formatting of the moved data (now at the destination oD) is copied back onto the source
+&apos; range oS and the content that came with it is cleared again. Formatting stays, content goes.
+Sub KeepSourceFormat(oSrcSheet As Object, oDstSheet As Object, oD As Object, oS As Object)
+    Dim oFrom As New com.sun.star.table.CellRangeAddress
+    Dim oBack As New com.sun.star.table.CellAddress
+    Dim nContent As Long
+
+    nContent = com.sun.star.sheet.CellFlags.VALUE + com.sun.star.sheet.CellFlags.DATETIME + _
+               com.sun.star.sheet.CellFlags.STRING + com.sun.star.sheet.CellFlags.ANNOTATION + _
+               com.sun.star.sheet.CellFlags.FORMULA + com.sun.star.sheet.CellFlags.OBJECTS
+    oFrom.Sheet = oD.Sheet
+    oFrom.StartColumn = oD.Column : oFrom.StartRow = oD.Row
+    oFrom.EndColumn = oD.Column + (oS.EndColumn - oS.StartColumn)
+    oFrom.EndRow = oD.Row + (oS.EndRow - oS.StartRow)
+    oBack.Sheet = oS.Sheet : oBack.Column = oS.StartColumn : oBack.Row = oS.StartRow
+    oDstSheet.copyRange(oBack, oFrom)
+    oSrcSheet.getCellRangeByPosition(oS.StartColumn, oS.StartRow, oS.EndColumn, oS.EndRow).clearContents(nContent)
+End Sub
+
 Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As Long)
     Dim oDoc As Object, oSrcSheet As Object, oDstSheet As Object
     Dim oT As New com.sun.star.table.CellRangeAddress
@@ -1345,6 +1647,7 @@ Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As 
             oD.Sheet = oT.Sheet : oD.Column = 0 : oD.Row = nIns + nOff
             If bCutMode Then
                 oSrcSheet.moveRange(oD, oS)                    &apos; references follow the moved cells
+                If bMoveMode Then KeepSourceFormat oSrcSheet, oDstSheet, oD, oS
             Else
                 oSrcSheet.copyRange(oD, oS)
             End If
@@ -1392,6 +1695,7 @@ Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As 
             oD.Sheet = oT.Sheet : oD.Column = nIns + nOff : oD.Row = 0
             If bCutMode Then
                 oSrcSheet.moveRange(oD, oS)
+                If bMoveMode Then KeepSourceFormat oSrcSheet, oDstSheet, oD, oS
             Else
                 oSrcSheet.copyRange(oD, oS)
             End If
@@ -1431,6 +1735,7 @@ Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As 
             oD.Sheet = oT.Sheet : oD.Column = nCol : oD.Row = nRow
             If bCutMode Then
                 oSrcSheet.moveRange(oD, oS)
+                If bMoveMode Then KeepSourceFormat oSrcSheet, oDstSheet, oD, oS
                 If bRemove Then oSrcSheet.removeRange(oS, com.sun.star.sheet.CellDeleteMode.UP)
             Else
                 oSrcSheet.copyRange(oD, oS)
@@ -1458,6 +1763,7 @@ Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As 
             oD.Sheet = oT.Sheet : oD.Column = nCol : oD.Row = nRow
             If bCutMode Then
                 oSrcSheet.moveRange(oD, oS)
+                If bMoveMode Then KeepSourceFormat oSrcSheet, oDstSheet, oD, oS
                 If bRemove Then oSrcSheet.removeRange(oS, com.sun.star.sheet.CellDeleteMode.LEFT)
             Else
                 oSrcSheet.copyRange(oD, oS)
@@ -1487,6 +1793,140 @@ Sub PerformInsert(tSheet As Long, tC1 As Long, tR1 As Long, tC2 As Long, tR2 As 
 
 InsideSource:
     MsgBox Txt(&quot;msg.inside&quot;), 48
+    Exit Sub
+
+ErrHandler:
+    sErr = Error$ : nLine = Erl
+    If bUndo Then oDoc.UndoManager.leaveUndoContext()
+    MsgBox Txt(&quot;err.general&quot;) &amp; nLine &amp; Txt(&quot;err.sep&quot;) &amp; sErr, 16
+End Sub
+
+
+&apos;=====================================================================
+&apos;  6b. Copy sheets and insert
+&apos;      The selected sheets are copied as one block before / after the destination sheet.
+&apos;      1) copyByName makes every copy (tab color, column widths, page style ... come with
+&apos;         it), all the copies being in place before anything else is done;
+&apos;      2) the used area of each source is then pasted on its copy with copyRange. The
+&apos;         references between sheets are adjusted by the paste, exactly as for any cells:
+&apos;         a relative reference to a sheet of the block follows the block.
+&apos;=====================================================================
+&apos; A sheet name based on sBase that is neither in the document nor in aTaken(0 .. nTaken-1)
+Function FreeSheetName(oSheets As Object, sBase As String, aTaken() As String, nTaken As Long) As String
+    Dim k As Long, j As Long, sTry As String, bTaken As Boolean
+    k = 2
+    Do
+        sTry = sBase &amp; &quot;_&quot; &amp; k
+        bTaken = oSheets.hasByName(sTry)
+        For j = 0 To nTaken - 1
+            If aTaken(j) = sTry Then bTaken = True
+        Next j
+        If Not bTaken Then Exit Do
+        k = k + 1
+    Loop
+    FreeSheetName = sTry
+End Function
+
+&apos; Makes the sheet number nIdx the active sheet and the ONLY selected one, with the ranges
+&apos; sRanges (&quot;c1,r1,c2,r2;...&quot;) highlighted, or cell A1 if there are none. Selecting
+&apos; a cell is not enough: the sheet tabs that were selected stay marked without being shown
+&apos; as selected, and then whatever is typed in a cell goes to all those sheets. Deselecting
+&apos; all the sheets (Deselect All Sheets, which keeps the active sheet) clears those marks.
+Sub SelectFirstSheet(oDoc As Object, nIdx As Long, sRanges As String)
+    Dim oCtrl As Object, oSheet As Object, oDisp As Object, aR As Variant
+    Dim aArgs(0) As New com.sun.star.beans.PropertyValue
+    On Error Resume Next
+    oCtrl = oDoc.CurrentController
+    oSheet = oDoc.Sheets.getByIndex(nIdx)
+    oCtrl.setActiveSheet(oSheet)
+    oDisp = createUnoService(&quot;com.sun.star.frame.DispatchHelper&quot;)
+    oDisp.executeDispatch(oCtrl.Frame, &quot;.uno:TableDeselectAll&quot;, &quot;&quot;, 0, Array())
+    If sRanges = &quot;&quot; Then
+        sRanges = &quot;0,0,0,0&quot;
+    End If
+    aR = StringToRanges(sRanges)
+    If UBound(aR, 2) = 0 And aR(0, 0) = aR(2, 0) And aR(1, 0) = aR(3, 0) Then
+        &apos; one cell: only the cell cursor goes there (like a click), it is not highlighted
+        &apos; as a selected range, which is what select() would do
+        aArgs(0).Name = &quot;ToPoint&quot;
+        aArgs(0).Value = oSheet.getCellByPosition(aR(0, 0), aR(1, 0)).AbsoluteName
+        oDisp.executeDispatch(oCtrl.Frame, &quot;.uno:GoToCell&quot;, &quot;&quot;, 0, aArgs())
+    Else
+        oCtrl.select(BuildSelection(oDoc, nIdx, aR))
+    End If
+End Sub
+
+&apos; True if copies inserted at position nPos (they become sheet number nPos, so they go
+&apos; before the sheet that is at nPos now) do not fall inside the range of the sheets
+&apos; nFirst .. nLast that are copied: that is before the first one or after the last one.
+Function SheetInsertAllowed(nPos As Long, nFirst As Long, nLast As Long) As Boolean
+    SheetInsertAllowed = Not (nPos &gt; nFirst And nPos &lt;= nLast)
+End Function
+
+&apos; sIdx = indexes of the source sheets &quot;1,2,5&quot;; tSheet = index of the destination sheet
+Sub PerformSheetCopy(sIdx As String, bBefore As Boolean, tSheet As Long)
+    Dim oDoc As Object, oSheets As Object, oSrc As Object, oCur As Object
+    Dim aIdx() As String, aOld() As String, aNew() As String
+    Dim oD As New com.sun.star.table.CellAddress
+    Dim n As Long, i As Long, nPos As Long, bUndo As Boolean
+    Dim sErr As String, nLine As Long
+
+    On Error GoTo ErrHandler
+    oDoc = ThisComponent
+    oSheets = oDoc.Sheets
+    Dim sList As String, sRg As String, nAt As Long
+    nAt = InStr(sIdx, &quot;@&quot;)                  &apos; &quot;1,2@c1,r1,c2,r2&quot; = sheets @ highlighted ranges
+    If nAt &gt; 0 Then
+        sList = Left(sIdx, nAt - 1)
+        sRg = Mid(sIdx, nAt + 1)
+    Else
+        sList = sIdx
+        sRg = &quot;&quot;
+    End If
+    aIdx = Split(sList, &quot;,&quot;)
+    n = UBound(aIdx) + 1
+    ReDim aOld(n - 1) As String
+    ReDim aNew(n - 1) As String
+    For i = 0 To n - 1
+        aOld(i) = oSheets.getByIndex(CLng(aIdx(i))).Name
+        aNew(i) = FreeSheetName(oSheets, aOld(i), aNew, i)
+    Next i
+    nPos = tSheet
+    If Not bBefore Then nPos = nPos + 1
+
+    &apos; never inside the range of the copied sheets: it would break the references between them
+    If Not SheetInsertAllowed(nPos, CLng(aIdx(0)), CLng(aIdx(n - 1))) Then
+        MsgBox Txt(&quot;msg.sheetinside&quot;), 48
+        Exit Sub
+    End If
+
+    oDoc.UndoManager.enterUndoContext(UndoPrefix() &amp; Txt(&quot;undo.sheets&quot;)) : bUndo = True
+
+    &apos; 1) the copies, in order (the sources are found again by name: indexes move)
+    For i = 0 To n - 1
+        oSheets.copyByName(aOld(i), aNew(i), nPos + i)
+    Next i
+
+    &apos; 2) the cells of every source onto its copy
+    For i = 0 To n - 1
+        oSrc = oSheets.getByName(aOld(i))
+        oCur = oSrc.createCursor()
+        oCur.gotoStartOfUsedArea(False)
+        oCur.gotoEndOfUsedArea(True)
+        oD.Sheet = oSheets.getByName(aNew(i)).RangeAddress.Sheet
+        oD.Column = 0 : oD.Row = 0
+        oSrc.copyRange(oD, oCur.RangeAddress)
+    Next i
+
+    oDoc.UndoManager.leaveUndoContext()
+    bUndo = False
+
+    &apos; remember the ORIGINAL sheets so an Undo can select the first one again, and select
+    &apos; the first copy (that sheet only)
+    On Error Resume Next
+    SetDocProp oDoc, UNDO_NAME, &quot;S|&quot; &amp; sIdx
+    SelectFirstSheet oDoc, nPos, sRg
+    On Error GoTo 0
     Exit Sub
 
 ErrHandler:

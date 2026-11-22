@@ -3,7 +3,8 @@
 # Each time the Edit menu opens, LibreOffice asks it for the state of the
 # direction entries inside the four submenus. It enables only the directions
 # that fit the current selection (rows: above / below, columns: left / right,
-# cells: all four) and adds the word rows / columns / cells to the entry.
+# cells: all four) and adds the word rows / columns / cells to the entry. With several
+# sheet tabs selected, only the Copy submenu is enabled, with Before / After.
 # The actions are the Basic macros of CopyInsertLib.CopyInsert, and all texts
 # come from its Txt() function, so the menus use the same wording and
 # languages as the context menus.
@@ -24,7 +25,8 @@ DEBUG = False
 ACTS = ("Copy", "Paste", "Cut", "Move")
 MACRO_ACT = {"Copy": "Copy", "Paste": "PasteSpecial", "Cut": "Cut", "Move": "Move"}
 DIRS = ("Above", "Below", "Left", "Right")
-VALID_DIRS = {"cells": DIRS, "rows": ("Above", "Below"), "columns": ("Left", "Right")}
+VALID_DIRS = {"cells": DIRS, "rows": ("Above", "Below"), "columns": ("Left", "Right"),
+              "sheets": ("Above", "Below")}   # sheets: only for Copy; Above = before, Below = after
 
 MODULE = "com.sun.star.sheet.SpreadsheetDocument"
 
@@ -129,6 +131,11 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
             act, _, d = url.Path.partition(".")
             if kind is None or act not in ACTS or d not in VALID_DIRS[kind]:
                 return
+            if kind == "sheets":
+                if act == "Copy":
+                    _basic(self.ctx, "StartCopySheetsBefore" if d == "Above"
+                           else "StartCopySheets")
+                return
             if kind == "cells":
                 name = "Start" + MACRO_ACT[act] + d
             elif d in ("Above", "Left"):
@@ -168,7 +175,10 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
                 return None
             sheet_no = ranges[0].Sheet
             if any(r.Sheet != sheet_no for r in ranges):
-                return None
+                tabs = sorted({r.Sheet for r in ranges})
+                if tabs != list(range(tabs[0], tabs[-1] + 1)):
+                    return None     # sheets with gaps: not supported
+                return "sheets"     # several consecutive sheet tabs selected
             sheet = model.getSheets().getByIndex(sheet_no)
             ncols = sheet.getColumns().getCount()
             nrows = sheet.getRows().getCount()
@@ -219,13 +229,18 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
                 return
             kind = self._kind()
             ok = kind is not None and d in VALID_DIRS[kind]
-            text = self._txt("dir." + d.lower())
+            if kind == "sheets" and act != "Copy":
+                ok = False          # only the copy submenu works for sheets
+            key = "dir." + d.lower()
+            if ok and kind == "sheets":
+                key = "dir.before" if d == "Above" else "dir.after"
+            text = self._txt(key)
             if ok:
                 text += " (" + self._txt("k." + kind) + ")"
             text += "..."
             # The entry that runs a Start...Before macro shows its shortcut,
             # like the same entry in the context menus.
-            if ok and d == self._before_slot(kind):
+            if ok and kind != "sheets" and d == self._before_slot(kind):
                 label = _shortcuts(self.ctx).get(MACRO_ACT[act] + "Before")
                 if label:
                     text += "    " + label
