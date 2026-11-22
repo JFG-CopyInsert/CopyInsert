@@ -1,7 +1,6 @@
 Adds copy, cut and move with insertion to Calc.
 
-Select rows, columns or cells, right-click (or open the Edit menu),
-choose an action and click the destination.
+Select rows, columns or cells, right-click (or open the Edit menu), choose an action and click the destination.
 
 Several rows (or columns) selected with Ctrl are inserted together, in sheet order.
 
@@ -10,5 +9,6 @@ The sheets are copied as one block and the references between them follow the no
 All the selected sheets must be unprocted and consecutive (Shift+click on the tabs), and the copies must be inserted outside the range of the selected sheets: before the first one or after the last one.
 
 Rows go above/below, columns left/right, cells in all four directions.
-Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source, a protected source sheet dims every menu entry and a protected destination sheet cancels the action with a message (except when copying sheets, where the destination only gives the position),
-and the menus follow the interface language (English or French for now).
+Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source, a protected source sheet dims every menu entry and a protected destination sheet cancels the action with a message (except when copying sheets, where the destination only gives the position).
+
+The menus follow the interface language (English or French for now).
