@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Work out the version and the file name from the tag
         run: |
@@ -44,7 +44,9 @@ jobs:
           declared = dom.getElementsByTagName("version")[0].getAttribute("value")
           expected = os.environ["VERSION"]
           if declared != expected:
-              sys.exit("description.xml says version %s but the tag says %s" % (declared, expected))
+              sys.exit("description.xml says version %s but the tag says %s. The tag points to a commit "
+                       "made before the version was changed: delete the tag (and any release) and create it "
+                       "again on the latest commit." % (declared, expected))
           print("OK: %d XML files are valid, version %s" % (len(files), declared))
           EOF
 
