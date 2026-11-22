@@ -45,6 +45,13 @@
 &apos;  is refused with a message, because the references between the sheets of the block
 &apos;  would be broken.
 &apos;
+&apos;  PROTECTED SHEETS
+&apos;  A protected sheet can be neither the source nor the destination. When the sheet(s)
+&apos;  the action starts from are protected, every entry of the context menus and of the
+&apos;  Edit menu is dimmed (and a macro started anyway, e.g. by a shortcut, says why it
+&apos;  does nothing). A destination sheet that is protected gives an error message and the
+&apos;  action is cancelled.
+&apos;
 &apos;  OPTIONS
 &apos;  1) Right-click menus for cells, rows and columns, each with copy, paste
 &apos;     special, cut and move submenus. The Edit menu has the same four
@@ -207,6 +214,7 @@ Option Explicit
 &apos; ---------- Settings ----------
 Const MACRO_BASE = &quot;vnd.sun.star.script:CopyInsertLib.CopyInsert.&quot;
 Const MACRO_TAIL = &quot;?language=Basic&amp;location=application&quot;
+Const DISABLED_URL = &quot;org.libreoffice.extension.copyinsert:Disabled&quot;   &apos; a dimmed entry (see the protocol handler)
 &apos; True: menus use submenus / False: flat lists of entries
 Const USE_SUBMENUS = True
 &apos; Default direction for cells when StartCopy / StartCut / StartMove / StartPasteSpecial are used
@@ -232,6 +240,7 @@ Private oInterceptor As Object
 Private oUndoListener As Object
 Private oSelListener As Object
 Private oActListener As Object            &apos; sheets: tells which sheet tab was clicked
+Private bDimItems As Boolean               &apos; while a menu is built: the entries are dimmed
 Private oSrcDoc As Object
 Private oSrcAddr As Variant      &apos; first source range (the only one for cells)
 Private aSrcRanges As Variant    &apos; all source ranges: aR(field, index), see ReadSelection
@@ -630,7 +639,13 @@ Sub AddMenuItem(oMenu As Object, nPos As Long, sText As String, sMacro As String
     Dim oItem As Object
     oItem = oMenu.createInstance(&quot;com.sun.star.ui.ActionTrigger&quot;)
     oItem.setPropertyValue(&quot;Text&quot;, sText)
-    oItem.setPropertyValue(&quot;CommandURL&quot;, MACRO_BASE &amp; sMacro &amp; MACRO_TAIL)
+    If bDimItems Then
+        &apos; protected sheet: the protocol handler reports this command as disabled, so the
+        &apos; entry is dimmed (and if it is clicked anyway, it only explains why it does nothing)
+        oItem.setPropertyValue(&quot;CommandURL&quot;, DISABLED_URL)
+    Else
+        oItem.setPropertyValue(&quot;CommandURL&quot;, MACRO_BASE &amp; sMacro &amp; MACRO_TAIL)
+    End If
     oMenu.insertByIndex(nPos, oItem)
 End Sub
 
@@ -711,7 +726,7 @@ Function MenuHasOurEntries(oMenu As Object) As Boolean
         sCmd = &quot;&quot; : sTxt = &quot;&quot;
         sCmd = oItem.getPropertyValue(&quot;CommandURL&quot;)
         sTxt = oItem.getPropertyValue(&quot;Text&quot;)
-        If Left(sCmd, Len(MACRO_BASE)) = MACRO_BASE Then
+        If Left(sCmd, Len(MACRO_BASE)) = MACRO_BASE Or sCmd = DISABLED_URL Then
             MenuHasOurEntries = True
             Exit For
         End If
@@ -721,6 +736,31 @@ Function MenuHasOurEntries(oMenu As Object) As Boolean
         End If
     Next i
 End Function
+
+&apos; True if the sheet number nSheet is protected
+Function IsSheetProtected(oDoc As Object, nSheet As Long) As Boolean
+    IsSheetProtected = False
+    On Error Resume Next
+    IsSheetProtected = oDoc.Sheets.getByIndex(nSheet).isProtected()
+End Function
+
+&apos; True if one of the sheets whose numbers are in aSheets (Empty = none) is protected
+Function AnySheetProtected(oDoc As Object, aSheets As Variant) As Boolean
+    Dim i As Long
+    AnySheetProtected = False
+    If IsEmpty(aSheets) Then Exit Function
+    For i = 0 To UBound(aSheets)
+        If IsSheetProtected(oDoc, CLng(aSheets(i))) Then
+            AnySheetProtected = True
+            Exit For
+        End If
+    Next i
+End Function
+
+&apos; Shown when a dimmed entry is clicked anyway
+Sub ShowProtectedSource()
+    MsgBox Txt(&quot;msg.protsrc&quot;), 48
+End Sub
 
 &apos; True if the menu is the one of the sheet tabs (it has Rename Sheet)
 Function IsSheetTabMenu(oMenu As Object) As Boolean
@@ -861,6 +901,7 @@ Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
 
     CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.IGNORED
     On Error GoTo Oops
+    bDimItems = False
 
     oSelSupp = oEvent.Selection
     If IsNull(oSelSupp) Or IsEmpty(oSelSupp) Then Exit Function
@@ -873,6 +914,7 @@ Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
     &apos; the menu of the sheet tabs: copy sheets and insert
     If IsSheetTabMenu(oMenu) Then
         If MenuHasOurEntries(oMenu) Then Exit Function
+        bDimItems = AnySheetProtected(ThisComponent, ReadSheetSelection(oSel))   &apos; dimmed if protected
         If AddSheetEntries(oMenu, oSel) Then
             CMI_notifyContextMenuExecute = com.sun.star.ui.ContextMenuInterceptorAction.CONTINUE_MODIFIED
         End If
@@ -881,6 +923,7 @@ Function CMI_notifyContextMenuExecute(oEvent As Object) As Variant
 
     aRaw = ReadSelection(oSel, nSheet)       &apos; one range, or the ranges of a Ctrl selection
     If IsEmpty(aRaw) Then Exit Function
+    bDimItems = IsSheetProtected(ThisComponent, nSheet)    &apos; protected source sheet: all dimmed
 
     &apos; already added by another registered interceptor?
     If MenuHasOurEntries(oMenu) Then Exit Function
@@ -1295,6 +1338,10 @@ Sub ArmPendingEx(bCut As Boolean, bMove As Boolean, bBefore As Boolean, bSpecial
         MsgBox Txt(&quot;msg.select&quot;), 48
         Exit Sub
     End If
+    If IsSheetProtected(oDoc, nSheet) Then          &apos; the source sheet must not be protected
+        MsgBox Txt(&quot;msg.protsrc&quot;), 48
+        Exit Sub
+    End If
 
     sKind = KindOfRanges(oDoc, nSheet, aRaw)
     If sKind = &quot;WHOLE&quot; Then
@@ -1349,6 +1396,10 @@ Sub ArmSheetCopy(bBefore As Boolean)
     aSh = ReadSheetSelection(oCtrl.Selection)
     If IsEmpty(aSh) Then
         MsgBox Txt(&quot;msg.nosheets&quot;), 48
+        Exit Sub
+    End If
+    If AnySheetProtected(oDoc, aSh) Then            &apos; the source sheets must not be protected
+        MsgBox Txt(&quot;msg.protsrc&quot;), 48
         Exit Sub
     End If
     For i = 1 To UBound(aSh)                 &apos; the sheets must be consecutive
@@ -1484,6 +1535,12 @@ Sub RS_done(oEvent As Object)
     sStep = Txt(&quot;step.prepare&quot;)
     ClearState oDoc
 
+    &apos; --- the destination sheet must not be protected: nothing is done ---
+    If IsSheetProtected(oDoc, CLng(vT(0))) Then
+        MsgBox Txt(&quot;msg.protdest&quot;), 48
+        Exit Sub
+    End If
+
     &apos; --- copy sheets: the destination is the sheet of the click ---
     If a(0) = &quot;SHEETS&quot; Then
         sStep = Txt(&quot;step.run&quot;)
@@ -1541,6 +1598,10 @@ Sub AS_activeSpreadsheetChanged(oEvent As Object)
     On Error Resume Next
     oDoc.CurrentController.abortRangeSelection()        &apos; closes the destination window
     On Error GoTo Oops
+    If IsSheetProtected(oDoc, nDest) Then               &apos; protected destination: cancelled
+        MsgBox Txt(&quot;msg.protdest&quot;), 48
+        Exit Sub
+    End If
     PerformSheetCopy a(6), (a(2) = &quot;1&quot;), nDest
     Exit Sub
 

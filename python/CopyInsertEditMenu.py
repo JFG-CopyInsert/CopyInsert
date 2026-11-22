@@ -4,7 +4,8 @@
 # direction entries inside the four submenus. It enables only the directions
 # that fit the current selection (rows: above / below, columns: left / right,
 # cells: all four) and adds the word rows / columns / cells to the entry. With several
-# sheet tabs selected, only the Copy submenu is enabled, with Before / After.
+# sheet tabs selected, only the Copy submenu is enabled, with Before / After. Every entry
+# is dimmed while one of the sheets involved is protected.
 # The actions are the Basic macros of CopyInsertLib.CopyInsert, and all texts
 # come from its Txt() function, so the menus use the same wording and
 # languages as the context menus.
@@ -98,6 +99,7 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
     def __init__(self, ctx):
         self.ctx = ctx
         self.frame = None
+        self._sheets = []       # sheets of the selection, set by _kind()
 
     # --- XServiceInfo ---
     def getImplementationName(self):
@@ -127,6 +129,9 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
     # --- XDispatch ---
     def dispatch(self, url, args):
         try:
+            if url.Path == "Disabled":      # a dimmed entry of a context menu, clicked anyway
+                _basic(self.ctx, "ShowProtectedSource")
+                return
             kind = self._kind()
             act, _, d = url.Path.partition(".")
             if kind is None or act not in ACTS or d not in VALID_DIRS[kind]:
@@ -155,6 +160,7 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
     # --- selection ---
     def _kind(self):
         """'rows', 'columns', 'cells' or None (nothing usable selected)."""
+        self._sheets = []
         try:
             ctrl = self.frame.getController() if self.frame is not None else None
             if ctrl is None:
@@ -173,6 +179,7 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
                     return None     # drawing objects, ...
             if not ranges:
                 return None
+            self._sheets = sorted({r.Sheet for r in ranges})
             sheet_no = ranges[0].Sheet
             if any(r.Sheet != sheet_no for r in ranges):
                 tabs = sorted({r.Sheet for r in ranges})
@@ -195,6 +202,15 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
         except Exception:
             _log(traceback.format_exc())
             return None
+
+    def _protected(self):
+        """True if one of the sheets of the selection (see _kind) is protected."""
+        try:
+            sheets = self.frame.getController().getModel().getSheets()
+            return any(sheets.getByIndex(n).isProtected() for n in self._sheets)
+        except Exception:
+            _log(traceback.format_exc())
+            return False
 
     def _txt(self, key):
         if key not in _texts:
@@ -224,11 +240,22 @@ class EditMenuHandler(unohelper.Base, XDispatchProvider, XDispatch,
 
     def _send(self, listener, url):
         try:
+            if url.Path == "Disabled":      # context menu entry of a protected sheet: dimmed
+                ev = uno.createUnoStruct("com.sun.star.frame.FeatureStateEvent")
+                ev.FeatureURL = url
+                ev.FeatureDescriptor = ""
+                ev.Source = self
+                ev.Requery = False
+                ev.IsEnabled = False
+                listener.statusChanged(ev)
+                return
             act, _, d = url.Path.partition(".")
             if act not in ACTS or d not in DIRS:
                 return
             kind = self._kind()
             ok = kind is not None and d in VALID_DIRS[kind]
+            if ok and self._protected():
+                ok = False          # a protected sheet: every entry is dimmed
             if kind == "sheets" and act != "Copy":
                 ok = False          # only the copy submenu works for sheets
             key = "dir." + d.lower()

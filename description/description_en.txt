@@ -11,5 +11,5 @@ The sheets are copied as one block and the references between them follow the no
 The selected sheets must be consecutive (Shift+click on the tabs), and the copies must be inserted outside the range of the selected sheets: before the first one or after the last one.
 
 Rows go above/below, columns left/right, cells in all four directions.
-Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source,
+Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source, a protected source sheet dims every menu entry and a protected destination sheet cancels the action with a message,
 and the menus follow the interface language (English or French for now).
