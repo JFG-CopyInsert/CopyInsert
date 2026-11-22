@@ -5,11 +5,10 @@ choose an action and click the destination.
 
 Several rows (or columns) selected with Ctrl are inserted together, in sheet order.
 
-Sheets: right-click a sheet tab (or select several tabs first), choose
-Copy sheets and insert > Before/After and click the tab of the destination sheet.
+Sheets: right-click a sheet tab (or select several tabs first), choose Copy sheets and insert > Before/After and click the tab of the destination sheet.
 The sheets are copied as one block and the references between them follow the normal Calc paste rules.
-The selected sheets must be consecutive (Shift+click on the tabs), and the copies must be inserted outside the range of the selected sheets: before the first one or after the last one.
+All the selected sheets must be unprocted and consecutive (Shift+click on the tabs), and the copies must be inserted outside the range of the selected sheets: before the first one or after the last one.
 
 Rows go above/below, columns left/right, cells in all four directions.
-Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source, a protected source sheet dims every menu entry and a protected destination sheet cancels the action with a message,
+Cut and move keep formulas intact, Move empties the source cells but keeps their formatting, Undo reselects the source, a protected source sheet dims every menu entry and a protected destination sheet cancels the action with a message (except when copying sheets, where the destination only gives the position),
 and the menus follow the interface language (English or French for now).

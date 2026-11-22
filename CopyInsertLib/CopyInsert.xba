@@ -46,11 +46,12 @@
 &apos;  would be broken.
 &apos;
 &apos;  PROTECTED SHEETS
-&apos;  A protected sheet can be neither the source nor the destination. When the sheet(s)
-&apos;  the action starts from are protected, every entry of the context menus and of the
-&apos;  Edit menu is dimmed (and a macro started anyway, e.g. by a shortcut, says why it
-&apos;  does nothing). A destination sheet that is protected gives an error message and the
-&apos;  action is cancelled.
+&apos;  A protected sheet cannot be the source of an action. When the sheet(s) the action starts
+&apos;  from are protected, every entry of the context menus and of the Edit menu is dimmed
+&apos;  (and a macro started anyway, e.g. by a shortcut, says why it does nothing). A
+&apos;  protected destination sheet gives an error message and the action is cancelled, except
+&apos;  for the copy of sheets: there the destination sheet only gives the place of the new
+&apos;  sheets (before / after it), it is not modified, so it may be protected.
 &apos;
 &apos;  OPTIONS
 &apos;  1) Right-click menus for cells, rows and columns, each with copy, paste
@@ -1535,16 +1536,17 @@ Sub RS_done(oEvent As Object)
     sStep = Txt(&quot;step.prepare&quot;)
     ClearState oDoc
 
-    &apos; --- the destination sheet must not be protected: nothing is done ---
-    If IsSheetProtected(oDoc, CLng(vT(0))) Then
-        MsgBox Txt(&quot;msg.protdest&quot;), 48
-        Exit Sub
-    End If
-
-    &apos; --- copy sheets: the destination is the sheet of the click ---
+    &apos; --- copy sheets: the destination is the sheet of the click. It only gives the place of
+    &apos;     the new sheets (before / after it) and is not modified, so it may be protected ---
     If a(0) = &quot;SHEETS&quot; Then
         sStep = Txt(&quot;step.run&quot;)
         PerformSheetCopy a(6), (a(2) = &quot;1&quot;), CLng(vT(0))
+        Exit Sub
+    End If
+
+    &apos; --- the destination sheet must not be protected: nothing is done ---
+    If IsSheetProtected(oDoc, CLng(vT(0))) Then
+        MsgBox Txt(&quot;msg.protdest&quot;), 48
         Exit Sub
     End If
 
@@ -1598,11 +1600,7 @@ Sub AS_activeSpreadsheetChanged(oEvent As Object)
     On Error Resume Next
     oDoc.CurrentController.abortRangeSelection()        &apos; closes the destination window
     On Error GoTo Oops
-    If IsSheetProtected(oDoc, nDest) Then               &apos; protected destination: cancelled
-        MsgBox Txt(&quot;msg.protdest&quot;), 48
-        Exit Sub
-    End If
-    PerformSheetCopy a(6), (a(2) = &quot;1&quot;), nDest
+    PerformSheetCopy a(6), (a(2) = &quot;1&quot;), nDest          &apos; a protected destination sheet is fine
     Exit Sub
 
 Oops:

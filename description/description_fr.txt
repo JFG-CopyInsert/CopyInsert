@@ -1,17 +1,12 @@
 Ajoute à Calc les fonctions copier, couper et déplacer avec insertion.
 
-Sélectionnez des lignes, des colonnes ou des cellules,
-faites un clic droit (ou ouvrez le menu Édition),
-choisissez l'action puis cliquez sur la destination.
+Sélectionnez des lignes, des colonnes ou des cellules, faites un clic droit (ou ouvrez le menu Édition), choisissez l'action puis cliquez sur la destination.
 
 Plusieurs lignes (ou colonnes) sélectionnées avec Ctrl sont insérées ensemble, dans l'ordre de la feuille.
 
-Feuilles : faites un clic droit sur un onglet (ou sélectionnez d'abord plusieurs onglets),
-choisissez Copier les feuilles et insérer > Avant/Après puis cliquez l'onglet de la feuille de destination.
+Feuilles : faites un clic droit sur un onglet (ou sélectionnez d'abord plusieurs onglets), choisissez Copier les feuilles et insérer > Avant/Après puis cliquez l'onglet de la feuille de destination.
 Les feuilles sont copiées en bloc et les références entre elles suivent les règles normales de collage de Calc.
-Les feuilles sélectionnées doivent être consécutives (Maj+clic sur les onglets) et les copies doivent être insérées en dehors de la plage des feuilles sélectionnées : avant la première ou après la dernière.
+Toutes les feuilles sélectionnées doivent être non protégées et consécutives (Maj+clic sur les onglets) et les copies doivent être insérées en dehors de la plage des feuilles sélectionnées : avant la première ou après la dernière.
 
-Les lignes vont au-dessus ou en dessous, les colonnes à gauche ou à droite,
-les cellules dans les quatre directions.
-Couper et déplacer conservent les formules, Déplacer vide les cellules sources mais conserve leur mise en forme, Annuler resélectionne la source, une feuille source protégée grise toutes les entrées de menu et une feuille de destination protégée annule l'action avec un message,
-et les menus suivent la langue de l'interface (français ou anglais pour le moment).
+Les lignes vont au-dessus ou en dessous, les colonnes à gauche ou à droite, les cellules dans les quatre directions.
+Couper et déplacer conservent les formules, Déplacer vide les cellules sources mais conserve leur mise en forme, Annuler resélectionne la source, une feuille source protégée grise toutes les entrées de menu et une feuille de destination protégée annule l'action avec un message (sauf pour la copie de feuilles, où la destination ne donne que l'emplacement), et les menus suivent la langue de l'interface (français ou anglais pour le moment).
