@@ -21,6 +21,11 @@
     <name xlink:href="https://extensions.libreoffice.org">JFG</name>
   </publisher>
 
+  <!-- Where LibreOffice looks for a newer release (Extension Manager > Check for Updates) -->
+  <update-information>
+    <src xlink:href="https://raw.githubusercontent.com/JFG-CopyInsert/CopyInsert/main/CopyInsert.update.xml"/>
+  </update-information>
+
   <!-- Minimum Requirement -->
   <dependencies>
     <lo:LibreOffice-minimal-version value="26.8" d:name="LibreOffice 26.8"/>
