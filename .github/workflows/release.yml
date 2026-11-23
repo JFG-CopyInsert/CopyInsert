@@ -4,6 +4,10 @@
 #
 # Before tagging: the version in description.xml must be the tag without the "v".
 # The file is named like the previous releases: CopyInsert-1_2_1.oxt
+#
+# When the release exists, the last step writes CopyInsert.update.xml (the file LibreOffice
+# reads to find new versions) on the main branch, so it never has to be edited by hand.
+# That step is skipped if main already announces this version or a newer one.
 
 name: Build and release the extension
 
@@ -21,6 +25,8 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0         # the last step needs the history of main
 
       - name: Work out the version and the file name from the tag
         run: |
@@ -68,4 +74,84 @@ jobs:
             gh release create "$GITHUB_REF_NAME" "$OXT" \
               --title "CopyInsert $VERSION" \
               --generate-notes
+          fi
+
+      - name: Announce the new version in CopyInsert.update.xml (main branch)
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+          python3 - <<'EOF'
+          import os, re, subprocess, sys, xml.dom.minidom
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          oxt = os.environ["OXT"]
+
+          # what the released package says (description.xml as it is in the tagged commit)
+          text = subprocess.check_output(["git", "show", "refs/tags/%s:description.xml" % tag])
+          dom = xml.dom.minidom.parseString(text)
+          identifier = dom.getElementsByTagName("identifier")[0].getAttribute("value")
+          version = dom.getElementsByTagName("version")[0].getAttribute("value")
+          minimal = ""
+          for node in dom.getElementsByTagName("*"):
+              if node.tagName.endswith("LibreOffice-minimal-version"):
+                  minimal = node.getAttribute("value")
+
+          def as_tuple(value):
+              return tuple(int(part) for part in re.findall(r"\d+", value))
+
+          # never announce an older version than the one already announced
+          path = "CopyInsert.update.xml"
+          if os.path.exists(path):
+              current = re.search(r'<version value="([^"]+)"', open(path, encoding="utf-8").read())
+              if current and as_tuple(current.group(1)) >= as_tuple(version):
+                  print("%s already announces %s: nothing to do" % (path, current.group(1)))
+                  sys.exit(0)
+
+          base = "https://github.com/%s/releases" % repo
+          dependencies = ""
+          if minimal:
+              dependencies = (
+                  "  <dependencies>\n"
+                  '    <lo:LibreOffice-minimal-version value="%s" d:name="LibreOffice %s"/>\n'
+                  "  </dependencies>\n" % (minimal, minimal))
+          content = (
+              '<?xml version="1.0" encoding="UTF-8"?>\n'
+              "<!--\n"
+              "  Update information for the CopyInsert extension: release %(v)s.\n"
+              "  Written by the release workflow (.github/workflows/release.yml) once the release\n"
+              "  exists: do not edit by hand.\n"
+              "-->\n"
+              '<description xmlns="http://openoffice.org/extensions/update/2006"\n'
+              '             xmlns:xlink="http://www.w3.org/1999/xlink"\n'
+              '             xmlns:d="http://openoffice.org/extensions/description/2006"\n'
+              '             xmlns:lo="http://libreoffice.org/extensions/description/2011">\n'
+              '  <identifier value="%(id)s"/>\n'
+              '  <version value="%(v)s"/>\n'
+              "%(deps)s"
+              "  <update-download>\n"
+              '    <src xlink:href="%(base)s/download/%(tag)s/%(oxt)s"/>\n'
+              "  </update-download>\n"
+              "  <release-notes>\n"
+              '    <src xlink:href="%(base)s/tag/%(tag)s" lang="en"/>\n'
+              '    <src xlink:href="%(base)s/tag/%(tag)s" lang="fr"/>\n'
+              "  </release-notes>\n"
+              "</description>\n"
+          ) % {"v": version, "id": identifier, "deps": dependencies,
+               "base": base, "tag": tag, "oxt": oxt}
+          xml.dom.minidom.parseString(content.encode("utf-8"))      # must be well-formed
+          with open(path, "w", encoding="utf-8", newline="\n") as handle:
+              handle.write(content)
+          print("%s now announces %s" % (path, version))
+          EOF
+          if git diff --quiet -- CopyInsert.update.xml && [ -z "$(git ls-files --others --exclude-standard -- CopyInsert.update.xml)" ]; then
+            echo "No change to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add CopyInsert.update.xml
+            git commit -m "Update information for $VERSION"
+            git push origin "$DEFAULT_BRANCH"
           fi
