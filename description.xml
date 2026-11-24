@@ -18,7 +18,7 @@
 
   <!-- Publisher Information -->
   <publisher>
-    <name xlink:href="https://extensions.libreoffice.org/en/extensions/show/99725">CopyInsert</name>
+    <name xlink:href="https://wiki.documentfoundation.org/User:CopyInsertExtension">CopyInsert</name>
   </publisher>
 
   <!-- Where LibreOffice looks for a newer release (Extension Manager > Check for Updates) -->
